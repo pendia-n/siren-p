@@ -1,0 +1,69 @@
+---
+import Icon from "./Icon.astro";
+---
+
+<section class="world-viewer" data-viewer aria-label="Interactive BTC Fortress">
+  <div class="viewer-top">
+    <span class="viewer-label">
+      BTC <span>/</span> FORTRESS
+    </span>
+    <span class="pill">
+      <span class="status-dot"></span> Art preview
+    </span>
+  </div>
+  <div
+    class="canvas-wrap"
+    data-canvas
+    tabindex="0"
+    role="region"
+    aria-label="3D fortress. Drag to orbit, scroll or pinch to zoom. Use arrow keys to pan."
+  ></div>
+  <div class="viewer-loading" data-loading role="status">
+    <span class="loader-ring"></span>
+    <p data-progress>Opening the fortress…</p>
+    <button type="button" class="button secondary small" data-retry hidden>
+      Try again
+    </button>
+  </div>
+  <div class="viewer-bottom">
+    <div class="light-controls" role="group" aria-label="Scene lighting">
+      <button data-light="day" aria-pressed="false">
+        Daylight
+      </button>
+      <button data-light="dusk" aria-pressed="true">
+        Dusk
+      </button>
+      <button data-light="night" aria-pressed="false">
+        Night
+      </button>
+    </div>
+    <div class="viewer-actions">
+      <button
+        data-view-action="rotate"
+        title="Start rotation"
+        aria-label="Start rotation"
+        aria-pressed="false"
+      >
+        <Icon name="rotate" />
+      </button>
+      <button
+        data-view-action="reset"
+        title="Reset view"
+        aria-label="Reset view"
+      >
+        <Icon name="reset" />
+      </button>
+      <button
+        data-view-action="capture"
+        title="Save image"
+        aria-label="Save image"
+      >
+        <Icon name="camera" />
+      </button>
+    </div>
+  </div>
+  <p class="viewer-hint">Drag to discover · Scroll or pinch to get closer</p>
+</section>
+<script>
+  import "../scripts/viewer";
+</script>

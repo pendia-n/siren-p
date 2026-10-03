@@ -1,0 +1,55 @@
+---
+import Layout from "../layouts/Layout.astro";
+import PasswordField from "../components/PasswordField.astro";
+---
+
+<Layout title="Sign in">
+  <section class="auth-layout">
+    <div class="auth-intro">
+      <p class="eyebrow">WELCOME BACK</p>
+      <h1>
+        Your little
+        <br />
+        escape awaits.
+      </h1>
+      <p>The fortress is right where you left it.</p>
+      <div class="auth-symbol" aria-hidden="true">
+        z<span>•</span>
+      </div>
+    </div>
+    <div class="form-card">
+      <h2>Sign in</h2>
+      <p>Use your username and password.</p>
+      {Astro.url.searchParams.has("reset") && (
+        <p class="notice success">
+          Password updated. Sign in with your new password.
+        </p>
+      )}
+      <form method="post" data-auth-action="login">
+        <div class="field">
+          <label for="username">Username</label>
+          <input
+            id="username"
+            name="username"
+            required
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck={false}
+            maxlength="24"
+          />
+        </div>
+        <PasswordField current />
+        <a class="text-link recovery-link" href="/recovery">
+          Forgot your password?
+        </a>
+        <p class="form-status" role="status" aria-live="polite"></p>
+        <button class="button full" type="submit">
+          Sign in
+        </button>
+      </form>
+      <p class="form-foot">
+        New here? <a href="/signup">Create an account</a>
+      </p>
+    </div>
+  </section>
+</Layout>

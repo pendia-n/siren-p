@@ -1,14 +1,25 @@
 {
-	"$schema": "./node_modules/wrangler/config-schema.json",
-	"compatibility_date": "2026-09-30",
-	"compatibility_flags": ["global_fetch_strictly_public"],
-	"name": "zahari",
-	"main": "@astrojs/cloudflare/entrypoints/server",
-	"assets": {
-		"directory": "./dist",
-		"binding": "ASSETS"
-	},
-	"observability": {
-		"enabled": true
-	}
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "compatibility_date": "2026-09-30",
+  "compatibility_flags": ["global_fetch_strictly_public", "nodejs_compat"],
+  "name": "zahari",
+  "workers_dev": true,
+  "preview_urls": false,
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "zahari-db",
+      "database_id": "c7234074-c84f-48ae-ae96-18c4349737f0",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [{ "binding": "MODELS", "bucket_name": "zahari-models" }],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+  },
+  "observability": {
+    "enabled": true,
+  },
 }

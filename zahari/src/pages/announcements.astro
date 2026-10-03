@@ -1,0 +1,23 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Updates">
+  <section class="editorial page-width">
+    <p class="eyebrow">FROM ZAHARI</p>
+    <h1>
+      Room for
+      <br />
+      what’s next.
+    </h1>
+    <div class="empty-state">
+      <h2>No announcements yet.</h2>
+      <p>
+        Product updates will appear here when there is something ready to share.
+      </p>
+      <a href={Astro.locals.user ? "/studio" : "/"} class="text-link">
+        Back to the fortress ↗
+      </a>
+    </div>
+  </section>
+</Layout>

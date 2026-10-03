@@ -1,0 +1,16 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Page not found">
+  <section class="editorial page-width">
+    <p class="eyebrow">A SMALL DETOUR / 404</p>
+    <h1>Not this way.</h1>
+    <p class="lead">
+      That page is not here. Let’s get you back to the fortress.
+    </p>
+    <a class="button" href={Astro.locals.user ? "/studio" : "/"}>
+      Go back home
+    </a>
+  </section>
+</Layout>

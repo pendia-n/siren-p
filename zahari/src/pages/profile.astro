@@ -1,0 +1,65 @@
+---
+import Layout from "../layouts/Layout.astro";
+const user = Astro.locals.user!;
+const date = (stamp: number) =>
+  new Date(stamp * 1000).toLocaleDateString("en", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+---
+
+<Layout title="Your profile">
+  <section class="account-page page-width">
+    <p class="eyebrow">YOUR ACCOUNT</p>
+    <h1>A little introduction.</h1>
+    <div class="profile-card">
+      <div class="avatar" aria-hidden="true">
+        {user.username[0].toUpperCase()}
+      </div>
+      <div>
+        <h2>@{user.username}</h2>
+        <p>Joined {date(user.createdAt)}</p>
+      </div>
+      <a class="button secondary" href="/studio">
+        Return to the fortress
+      </a>
+    </div>
+    <div class="settings-grid">
+      <section class="settings-card">
+        <h2>Account security</h2>
+        <dl>
+          <div>
+            <dt>Recovery passcode</dt>
+            <dd>{user.hasPasscode ? "Enabled" : "Not enabled"}</dd>
+          </div>
+          <div>
+            <dt>This session expires</dt>
+            <dd>{date(user.sessionExpiresAt)} (UTC)</dd>
+          </div>
+        </dl>
+        <div class="link-row">
+          <a href="/security#password" class="text-link">
+            Change password ↗
+          </a>
+          <a href="/security#recovery" class="text-link">
+            Manage recovery ↗
+          </a>
+        </div>
+      </section>
+      <section class="settings-card">
+        <p class="eyebrow">YOUR EXPERIENCE</p>
+        <h2>BTC Fortress preview</h2>
+        <p>
+          Your account includes the current interactive preview. No subscription
+          or payment is active.
+        </p>
+        <p class="muted">
+          Saved images download to your device. They are not stored in your
+          account.
+        </p>
+      </section>
+    </div>
+  </section>
+</Layout>

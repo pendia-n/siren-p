@@ -1,0 +1,47 @@
+---
+interface Props {
+  id?: string;
+  label?: string;
+  generate?: boolean;
+}
+const {
+  id = "passcode",
+  label = "Recovery passcode",
+  generate = true,
+} = Astro.props;
+---
+
+<div class="field">
+  <label for={id}>{label}</label>
+  <div class="password-wrap">
+    <input
+      type="password"
+      id={id}
+      name="passcode"
+      required
+      pattern="[a-z0-9]{8}"
+      minlength="8"
+      maxlength="8"
+      autocomplete="off"
+      autocapitalize="none"
+      spellcheck={false}
+      aria-describedby={`${id}-hint`}
+    />
+    <button
+      type="button"
+      data-show-password
+      aria-label={`Show ${label.toLowerCase()}`}
+    >
+      Show
+    </button>
+  </div>
+  <small id={`${id}-hint`}>
+    Exactly 8 lowercase letters or numbers.
+    {generate && " Save it somewhere private; we cannot show it again."}
+  </small>
+  {generate && (
+    <button type="button" class="text-button" data-generate-passcode>
+      Generate a passcode
+    </button>
+  )}
+</div>

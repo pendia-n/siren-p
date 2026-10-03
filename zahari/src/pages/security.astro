@@ -1,0 +1,110 @@
+---
+import Layout from "../layouts/Layout.astro";
+import PasswordField from "../components/PasswordField.astro";
+import PasscodeField from "../components/PasscodeField.astro";
+const user = Astro.locals.user!;
+---
+
+<Layout title="Account security">
+  <section class="account-page page-width">
+    <p class="eyebrow">ACCOUNT / SECURITY</p>
+    <h1>Peace of mind.</h1>
+    <p class="lead compact-lead">
+      Keep your password and recovery passcode somewhere only you can access.
+    </p>
+    <div class="settings-grid">
+      <section class="settings-card" id="password">
+        <h2>Change password</h2>
+        <p>
+          Changing your password signs you out on every device. Up to four
+          changes in 24 hours.
+        </p>
+        <form method="post" data-auth-action="password">
+          <PasswordField label="New password" id="change-password" />
+          <PasswordField
+            label="Confirm new password"
+            name="confirmation"
+            confirm
+          />
+          <p class="form-status" role="status"></p>
+          <button class="button" type="submit">
+            Change password
+          </button>
+        </form>
+      </section>
+      <section class="settings-card" id="recovery">
+        <div class="card-heading">
+          <h2>Recovery passcode</h2>
+          <span class="pill">{user.hasPasscode ? "Enabled" : "Disabled"}</span>
+        </div>
+        <p>
+          {user.hasPasscode
+            ? "Replace your passcode whenever you need to. The old one will stop working."
+            : "Add a passcode so you can recover a forgotten password."}
+        </p>
+        <form method="post" data-auth-action="passcode">
+          <PasswordField
+            label="Current password"
+            name="currentPassword"
+            current
+          />
+          <PasscodeField id="replace-passcode" label="New recovery passcode" />
+          <label class="checkbox">
+            <input type="checkbox" required />
+            <span>I have saved my new recovery passcode.</span>
+          </label>
+          <p class="form-status" role="status"></p>
+          <button class="button" type="submit">
+            {user.hasPasscode ? "Replace passcode" : "Enable passcode"}
+          </button>
+        </form>
+        {user.hasPasscode && (
+          <details class="disable-details">
+            <summary>Disable recovery</summary>
+            <p class="notice">
+              This is your only recovery method. If you forget your password
+              after disabling it, you cannot recover this account.
+            </p>
+            <form
+              method="post"
+              data-auth-action="passcode"
+              data-disable-passcode
+            >
+              <PasswordField
+                label="Current password"
+                name="currentPassword"
+                id="disable-password"
+                current
+              />
+              <label class="checkbox">
+                <input type="checkbox" required />
+                <span>
+                  I understand that password recovery will be unavailable.
+                </span>
+              </label>
+              <p class="form-status" role="status"></p>
+              <button class="button secondary" type="submit">
+                Disable passcode
+              </button>
+            </form>
+          </details>
+        )}
+      </section>
+      <section class="settings-card sessions-card">
+        <div>
+          <h2>Signed-in devices</h2>
+          <p>
+            Sessions last up to 56 days. You can end them all now, including
+            this device.
+          </p>
+        </div>
+        <form method="post" data-auth-action="logout-all">
+          <p class="form-status" role="status"></p>
+          <button class="button secondary" type="submit">
+            Sign out everywhere
+          </button>
+        </form>
+      </section>
+    </div>
+  </section>
+</Layout>

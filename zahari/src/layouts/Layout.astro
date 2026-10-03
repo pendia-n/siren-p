@@ -1,23 +1,106 @@
+---
+import "@fontsource/manrope/400.css";
+import "@fontsource/manrope/500.css";
+import "@fontsource/manrope/600.css";
+import "@fontsource/space-grotesk/500.css";
+import "../styles/global.css";
+import Icon from "../components/Icon.astro";
+interface Props {
+  title?: string;
+  description?: string;
+}
+const {
+  title = "A little world, worth a closer look.",
+  description = "Explore Zahari’s first three-dimensional world: the BTC Fortress.",
+} = Astro.props;
+const user = Astro.locals.user;
+const links = user
+  ? [
+      { href: "/studio", label: "Explore", icon: "world" },
+      { href: "/profile", label: "Profile", icon: "user" },
+      { href: "/security", label: "Security", icon: "shield" },
+    ]
+  : [
+      { href: "/about", label: "About", icon: "world" },
+      { href: "/signin", label: "Sign in", icon: "user" },
+    ];
+---
+
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro Basics</title>
-	</head>
-	<body>
-		<slot />
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#eeedf6" />
+    <link rel="icon" type="image/svg+xml" href="/zahari.svg?v=562fc3bd" />
+    <title>{title} — Zahari</title>
+  </head>
+  <body>
+    <a href="#main" class="skip-link">
+      Skip to content
+    </a>
+    <header class="site-header">
+      <a class="brand" href={user ? "/studio" : "/"} aria-label="Zahari home">
+        <img src="/zahari.svg?v=562fc3bd" width="36" height="36" alt="" />
+        <span>
+          zahari<span class="brand-dot">.</span>
+        </span>
+      </a>
+      <nav aria-label="Main navigation">
+        {links.map((link) => (
+          <a
+            class:list={[
+              "nav-link",
+              { active: Astro.url.pathname === link.href },
+            ]}
+            href={link.href}
+            aria-label={link.label}
+            title={link.label}
+            aria-current={Astro.url.pathname === link.href ? "page" : undefined}
+          >
+            <Icon name={link.icon} />
+            <span>{link.label}</span>
+          </a>
+        ))}
+        {user ? (
+          <button
+            class="nav-link"
+            data-logout
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <Icon name="exit" />
+            <span>Sign out</span>
+          </button>
+        ) : (
+          <a
+            class="nav-link nav-cta"
+            href="/signup"
+            aria-label="Create account"
+            title="Create account"
+          >
+            <Icon name="plus" />
+            <span>Step inside</span>
+          </a>
+        )}
+      </nav>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <span>A place to pause. A world to explore.</span>
+      <nav aria-label="Footer">
+        <a href="/about">About</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/announcements">Updates</a>
+      </nav>
+      <span class="footer-mark">ZAHARI / PREVIEW</span>
+    </footer>
+    <p id="global-status" class="toast" role="status" hidden></p>
+    <script>
+      import "../scripts/account";
+    </script>
+  </body>
 </html>
-
-<style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
-</style>

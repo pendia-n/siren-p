@@ -1,0 +1,32 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Viewer from "../components/Viewer.astro";
+---
+
+<Layout title="Your world">
+  <section class="studio page-width">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">YOUR EXPLORATION SPACE</p>
+        <h1>
+          The BTC Fortress<span class="heading-dot">.</span>
+        </h1>
+      </div>
+      <span class="pill">Interactive preview</span>
+    </div>
+    <Viewer />
+    <div class="studio-caption">
+      <div>
+        <h2>Stay a little. Look a little closer.</h2>
+        <p>
+          Orbit, change the light, or save a picture of your favourite angle.
+        </p>
+      </div>
+      <p class="data-note">
+        Market data and news are not connected.
+        <br />
+        Lighting is controlled by you.
+      </p>
+    </div>
+  </section>
+</Layout>

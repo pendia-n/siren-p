@@ -1,11 +1,52 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Layout from "../layouts/Layout.astro";
+import Viewer from "../components/Viewer.astro";
+import Icon from "../components/Icon.astro";
 ---
 
 <Layout>
-	<Welcome />
+  <section class="landing-hero">
+    <div class="hero-copy">
+      <p class="eyebrow">THE FIRST WORLD / BTC</p>
+      <h1>
+        Less scrolling.
+        <br />
+        More <em>wonder.</em>
+      </h1>
+      <p class="lead">
+        A fortress to explore, not another chart to watch. Step into the first
+        little world of Zahari.
+      </p>
+      <a class="button" href="/signup">
+        Make yourself at home <Icon name="arrow" />
+      </a>
+      <p class="fine-print">Free preview · No card required</p>
+      <div class="hero-note">
+        <span class="note-line"></span>
+        <p>
+          Built for a closer look.
+          <br />
+          Made for a moment of quiet.
+        </p>
+      </div>
+    </div>
+    <div class="hero-art">
+      <Viewer />
+      <div class="art-caption">
+        <span>THE BTC FORTRESS</span>
+        <span>One world. Your point of view.</span>
+      </div>
+    </div>
+  </section>
+  <section class="intro-strip">
+    <h2>A world, not a watchlist.</h2>
+    <p>
+      Turn the fortress. Follow the light. Save a view worth keeping. This first
+      preview is about exploring the art; live market data and news are not
+      connected yet.
+    </p>
+    <a href="/about" class="text-link">
+      Meet Zahari ↗
+    </a>
+  </section>
 </Layout>

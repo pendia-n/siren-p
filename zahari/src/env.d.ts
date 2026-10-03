@@ -1,5 +1,12 @@
-type Runtime = import("@astrojs/cloudflare").Runtime<Env>;
+import type { SessionUser } from "./lib/auth";
 
-declare namespace App {
-	interface Locals extends Runtime {}
+declare global {
+  namespace App {
+    interface Locals {
+      user: SessionUser | null;
+      sessionId: string | null;
+    }
+  }
 }
+
+export {};

@@ -1,0 +1,37 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Pricing">
+  <section class="editorial page-width">
+    <p class="eyebrow">A SIMPLE START</p>
+    <h1>
+      Come in.
+      <br />
+      Look around.
+    </h1>
+    <div class="pricing-card">
+      <div>
+        <span class="pill">Current release</span>
+        <h2>Free preview</h2>
+        <p class="price">
+          $0<span> / no card required</span>
+        </p>
+        <p>Explore what is here, without a subscription.</p>
+      </div>
+      <ul class="feature-list">
+        <li>Interactive BTC Fortress</li>
+        <li>Daylight, dusk and night lighting</li>
+        <li>Camera controls and image downloads</li>
+        <li>Private account with passcode recovery</li>
+      </ul>
+      <a href={Astro.locals.user ? "/studio" : "/signup"} class="button">
+        Explore the preview
+      </a>
+    </div>
+    <p class="muted">
+      Paid plans are not available. This preview does not include live data,
+      news or downloadable 3D model ownership.
+    </p>
+  </section>
+</Layout>
