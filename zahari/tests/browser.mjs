@@ -75,17 +75,56 @@ try {
     await page
       .locator('[data-viewer][data-loaded="true"]')
       .waitFor({ timeout: 60000 });
+    assert.equal(
+      await page.locator("[data-viewer]").getAttribute("data-sample"),
+      "true",
+    );
+    const localHour = await page.evaluate(() => new Date().getHours());
+    const initialMood =
+      localHour >= 6 && localHour < 9
+        ? "dawn"
+        : localHour >= 9 && localHour < 15
+          ? "day"
+          : localHour >= 15 && localHour < 19
+            ? "dusk"
+            : "night";
+    assert.equal(
+      await page.locator("[data-viewer]").getAttribute("data-mood"),
+      initialMood,
+    );
+    for (const location of ["lowland", "pacific", "sky"]) {
+      await page.locator(`[data-location="${location}"]`).click();
+      assert.equal(
+        await page
+          .locator(`[data-location="${location}"]`)
+          .getAttribute("aria-pressed"),
+        "true",
+      );
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          ),
+      );
+      await page.screenshot({ path: `test-results/sample-${location}.png` });
+    }
+    await page.locator('[data-location="lowland"]').click();
     await page.screenshot({
       path: "test-results/desktop-home.png",
       fullPage: true,
     });
-    assert.equal(await page.locator("canvas").count(), 1);
+    assert.equal(await page.locator("canvas").count(), 2);
     await page.getByRole("button", { name: "Night", exact: true }).click();
     assert.equal(
       await page
         .getByRole("button", { name: "Night", exact: true })
         .getAttribute("aria-pressed"),
       "true",
+    );
+    await page.getByRole("button", { name: "Dawn", exact: true }).click();
+    assert.equal(
+      await page.locator("[data-viewer]").getAttribute("data-mood"),
+      "dawn",
     );
     await page
       .getByRole("button", { name: "Start rotation", exact: true })

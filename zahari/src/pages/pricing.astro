@@ -2,36 +2,72 @@
 import Layout from "../layouts/Layout.astro";
 ---
 
-<Layout title="Pricing">
-  <section class="editorial page-width">
-    <p class="eyebrow">A SIMPLE START</p>
-    <h1>
-      Come in.
-      <br />
-      Look around.
-    </h1>
-    <div class="pricing-card">
-      <div>
-        <span class="pill">Current release</span>
-        <h2>Free preview</h2>
-        <p class="price">
-          $0<span> / no card required</span>
+<Layout
+  title="Pricing"
+  description="Explore Zahari's free sample and the proposed membership for its eight coin worlds."
+>
+  <section class="pricing-page page-width">
+    <p class="eyebrow">MAKE A LITTLE SPACE TO EXPLORE</p>
+    <h1>One world, or all eight.</h1>
+    <p class="lead">
+      Begin with the free sample. Choose a coin world when paid memberships
+      open.
+    </p>
+    <div class="plan-grid">
+      <article class="plan-card">
+        <span class="pill">Available now</span>
+        <h2>Sample</h2>
+        <p class="plan-price">Free</p>
+        <p>Explore Zahari before choosing a world.</p>
+        <ul class="feature-list">
+          <li>Interactive sample artwork</li>
+          <li>Lowland, Pacific and sky locations</li>
+          <li>Dawn, daylight, dusk and night lighting</li>
+          <li>Orbit, zoom and save an image</li>
+        </ul>
+        <a href="/" class="button secondary">
+          Explore the sample
+        </a>
+      </article>
+      <article class="plan-card featured">
+        <span class="pill">Proposed membership · not on sale</span>
+        <h2>One World</h2>
+        <p class="plan-price">
+          $6 <span>USD / month · proposed</span>
         </p>
-        <p>Explore what is here, without a subscription.</p>
-      </div>
-      <ul class="feature-list">
-        <li>Interactive BTC Fortress</li>
-        <li>Daylight, dusk and night lighting</li>
-        <li>Camera controls and image downloads</li>
-        <li>Private account with passcode recovery</li>
-      </ul>
-      <a href={Astro.locals.user ? "/studio" : "/signup"} class="button">
-        Explore the preview
-      </a>
+        <p>Stay close to one coin you care about.</p>
+        <ul class="feature-list">
+          <li>Choose one of the eight launch coins</li>
+          <li>Its own 3D subject and available model states</li>
+          <li>Scene lighting, location and image capture</li>
+          <li>Future market-shaped updates and sourced news when launched</li>
+        </ul>
+        <span class="plan-unavailable">
+          Checkout opens when the full experience is ready
+        </span>
+      </article>
+      <article class="plan-card">
+        <span class="pill">Proposed membership · not on sale</span>
+        <h2>Eight Worlds</h2>
+        <p class="plan-price">
+          $16 <span>USD / month · proposed</span>
+        </p>
+        <p>Move between every launch world.</p>
+        <ul class="feature-list">
+          <li>All eight launch coins and their distinct 3D subjects</li>
+          <li>The same lighting, location and image controls</li>
+          <li>Future market-shaped updates and sourced news when launched</li>
+          <li>One membership, one account</li>
+        </ul>
+        <span class="plan-unavailable">
+          Checkout opens when the full experience is ready
+        </span>
+      </article>
     </div>
-    <p class="muted">
-      Paid plans are not available. This preview does not include live data,
-      news or downloadable 3D model ownership.
+    <p class="pricing-footnote">
+      Launch coins: AAVE, BNB, BTC, ETH, LINK, SOL, UNI and XAUT. Prices and
+      paid features are proposals; no card is collected and no subscription can
+      be purchased yet. Payment is planned through card checkout.
     </p>
   </section>
 </Layout>

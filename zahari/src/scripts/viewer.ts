@@ -2,17 +2,21 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { createLandscape } from "./landscape";
+import { moodForLocalHour } from "../lib/scene-time";
 
 function startViewer(root: HTMLElement) {
   const host = root.querySelector<HTMLElement>("[data-canvas]")!;
   const loading = root.querySelector<HTMLElement>("[data-loading]")!;
   const progress = root.querySelector<HTMLElement>("[data-progress]")!;
   const retry = root.querySelector<HTMLButtonElement>("[data-retry]")!;
+  const sample = root.dataset.sample === "true";
+  const landscape = createLandscape(host, sample ? "lowland" : "neutral");
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: false,
+      alpha: true,
       preserveDrawingBuffer: true,
     });
   } catch {
@@ -26,7 +30,7 @@ function startViewer(root: HTMLElement) {
   renderer.toneMappingExposure = 1.3;
   host.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color("#d8d2e5");
+  scene.background = null;
   const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 100);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -53,13 +57,13 @@ function startViewer(root: HTMLElement) {
   pmrem.dispose();
   const anchor = new THREE.Group();
   scene.add(anchor);
-  let ground: THREE.Mesh | undefined;
   let alive = true;
   let visible = true;
   let loaded = false;
   let needsRender = true;
   controls.addEventListener("change", () => {
     needsRender = true;
+    landscape.setParallax(camera.position.x * 5);
   });
   const reset = () => {
     controls.target.set(0, -0.1, 0);
@@ -76,6 +80,7 @@ function startViewer(root: HTMLElement) {
     const oldFit = 1 / Math.min(1, camera.aspect),
       newFit = 1 / Math.min(1, width / height);
     renderer.setSize(width, height, false);
+    landscape.paint();
     needsRender = true;
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
@@ -114,13 +119,13 @@ function startViewer(root: HTMLElement) {
     retry.hidden = true;
     loading.hidden = false;
     loading.classList.remove("error");
-    progress.textContent = "Opening the fortress…";
+    progress.textContent = "Opening the artwork…";
     try {
       const gltf = await loader.loadAsync(
-        "/media/btc/BTC_FORTRESS_01.glb",
+        sample ? "/media/SAMPLE.glb" : "/media/btc/BTC_FORTRESS_01.glb",
         (event) => {
           if (event.total)
-            progress.textContent = `Opening the fortress… ${Math.round((event.loaded / event.total) * 100)}%`;
+            progress.textContent = `Opening the artwork… ${Math.round((event.loaded / event.total) * 100)}%`;
         },
       );
       if (!alive) {
@@ -133,17 +138,6 @@ function startViewer(root: HTMLElement) {
       gltf.scene.position.sub(box.getCenter(new THREE.Vector3()));
       anchor.add(gltf.scene);
       anchor.scale.setScalar(scale);
-      ground = new THREE.Mesh(
-        new THREE.CircleGeometry(2.45, 80),
-        new THREE.MeshStandardMaterial({
-          color: "#c8bfd9",
-          roughness: 1,
-          metalness: 0,
-        }),
-      );
-      ground.rotation.x = -Math.PI / 2;
-      ground.position.y = (-size.y * scale) / 2 - 0.02;
-      scene.add(ground);
       loaded = true;
       needsRender = true;
       loading.hidden = true;
@@ -152,30 +146,35 @@ function startViewer(root: HTMLElement) {
     } catch {
       loading.classList.add("error");
       progress.textContent =
-        "The fortress did not load. Check your connection, then try again.";
+        "The artwork did not load. Check your connection, then try again.";
       retry.hidden = false;
     }
   }
   retry.addEventListener("click", load);
   void load();
   const moods: Record<
-    string,
+    "dawn" | "day" | "dusk" | "night",
     {
       bg: string;
       sun: string;
       power: number;
       exposure: number;
       ambient: number;
-      floor: string;
     }
   > = {
+    dawn: {
+      bg: "#d9c9d1",
+      sun: "#ffcfa6",
+      power: 3,
+      exposure: 1.12,
+      ambient: 2,
+    },
     day: {
       bg: "#e5e5ef",
       sun: "#fff5df",
       power: 4,
       exposure: 1.4,
       ambient: 2.7,
-      floor: "#d2cedc",
     },
     dusk: {
       bg: "#d8d2e5",
@@ -183,7 +182,6 @@ function startViewer(root: HTMLElement) {
       power: 3.5,
       exposure: 1.3,
       ambient: 2.3,
-      floor: "#c8bfd9",
     },
     night: {
       bg: "#55506d",
@@ -191,28 +189,49 @@ function startViewer(root: HTMLElement) {
       power: 2,
       exposure: 0.95,
       ambient: 1.2,
-      floor: "#655c7c",
     },
   };
-  root.querySelectorAll<HTMLButtonElement>("[data-light]").forEach((button) =>
-    button.addEventListener("click", () => {
-      root.dataset.mood = button.dataset.light;
-      needsRender = true;
-      const mood = moods[button.dataset.light!];
-      scene.background = new THREE.Color(mood.bg);
-      sun.color.set(mood.sun);
-      sun.intensity = mood.power;
-      hemisphere.intensity = mood.ambient;
-      renderer.toneMappingExposure = mood.exposure;
-      if (ground)
-        (ground.material as THREE.MeshStandardMaterial).color.set(mood.floor);
-      root
-        .querySelectorAll("[data-light]")
-        .forEach((item) =>
-          item.setAttribute("aria-pressed", String(item === button)),
+  const applyMood = (name: keyof typeof moods) => {
+    root.dataset.mood = name;
+    needsRender = true;
+    const mood = moods[name];
+    sun.color.set(mood.sun);
+    sun.intensity = mood.power;
+    hemisphere.intensity = mood.ambient;
+    renderer.toneMappingExposure = mood.exposure;
+    landscape.setMood(name);
+    root
+      .querySelectorAll("[data-light]")
+      .forEach((item) =>
+        item.setAttribute(
+          "aria-pressed",
+          String((item as HTMLElement).dataset.light === name),
+        ),
+      );
+  };
+  const hour = new Date().getHours();
+  applyMood(moodForLocalHour(hour));
+  root
+    .querySelectorAll<HTMLButtonElement>("[data-light]")
+    .forEach((button) =>
+      button.addEventListener("click", () =>
+        applyMood(button.dataset.light as keyof typeof moods),
+      ),
+    );
+  root
+    .querySelectorAll<HTMLButtonElement>("[data-location]")
+    .forEach((button) =>
+      button.addEventListener("click", () => {
+        landscape.setLocation(
+          button.dataset.location as "lowland" | "pacific" | "sky",
         );
-    }),
-  );
+        root
+          .querySelectorAll("[data-location]")
+          .forEach((item) =>
+            item.setAttribute("aria-pressed", String(item === button)),
+          );
+      }),
+    );
   root
     .querySelector<HTMLButtonElement>('[data-view-action="reset"]')!
     .addEventListener("click", reset);
@@ -233,12 +252,19 @@ function startViewer(root: HTMLElement) {
     .addEventListener("click", () => {
       if (!loaded) return;
       renderer.render(scene, camera);
-      renderer.domElement.toBlob((blob) => {
+      const capture = document.createElement("canvas");
+      capture.width = renderer.domElement.width;
+      capture.height = renderer.domElement.height;
+      const context = capture.getContext("2d");
+      if (!context) return;
+      context.drawImage(landscape.canvas, 0, 0, capture.width, capture.height);
+      context.drawImage(renderer.domElement, 0, 0);
+      capture.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `zahari-btc-fortress-${new Date().toISOString().slice(0, 10)}.png`;
+        link.download = `zahari-${sample ? "sample" : "btc-fortress"}-${new Date().toISOString().slice(0, 10)}.png`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       });

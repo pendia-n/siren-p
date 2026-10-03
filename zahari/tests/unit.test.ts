@@ -14,6 +14,15 @@ import {
   validPassword,
   validPasscode,
 } from "../src/lib/validation";
+import { moodForLocalHour } from "../src/lib/scene-time";
+
+test("local-hour lighting boundaries", () => {
+  for (const hour of [0, 5, 19, 23])
+    assert.equal(moodForLocalHour(hour), "night");
+  for (const hour of [6, 8]) assert.equal(moodForLocalHour(hour), "dawn");
+  for (const hour of [9, 14]) assert.equal(moodForLocalHour(hour), "day");
+  for (const hour of [15, 18]) assert.equal(moodForLocalHour(hour), "dusk");
+});
 
 test("username normalization and credential rules", () => {
   assert.equal(normalizeUsername("  Alice_17 "), "alice_17");

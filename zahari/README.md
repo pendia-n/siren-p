@@ -1,6 +1,6 @@
 # Zahari
 
-Astro + Cloudflare Worker app with D1 authentication and an R2-backed Three.js BTC Fortress viewer. Product scope is documented in `../APP.md`.
+Astro + Cloudflare Worker app with D1 authentication, a public SAMPLE.glb viewer and an R2-backed BTC Fortress studio. Product scope is documented in `../APP.md`.
 
 ## Local development
 
@@ -11,6 +11,7 @@ pnpm install --frozen-lockfile
 pnpm setup:secret
 pnpm exec wrangler d1 migrations apply DB --local
 pnpm exec wrangler r2 object put zahari-models/btc/BTC_FORTRESS_01.glb --file /absolute/path/to/BTC_FORTRESS_01.glb --content-type model/gltf-binary --local
+pnpm exec wrangler r2 object put zahari-models/SAMPLE.glb --file /absolute/path/to/SAMPLE.glb --content-type model/gltf-binary --local
 pnpm exec astro dev --background
 ```
 
@@ -33,17 +34,18 @@ Browser tests use Playwright with installed Chrome. Screenshots and downloads ar
 
 ## Deployment
 
-Resources are declared in `wrangler.jsonc`: Worker `zahari`, D1 `zahari-db`, R2 `zahari-models`. The GLB is uploaded once to R2, not included in Git or the static build.
+Resources are declared in `wrangler.jsonc`: Worker `zahari`, D1 `zahari-db`, R2 `zahari-models`. All 46 GLBs from the eight asset folders and the root sample were uploaded to R2, not Git or the static build. `scripts/sync-models.mjs` accepts a source directory for uploads and complete remote SHA-256 verification.
 
 ```sh
 pnpm exec wrangler whoami
 pnpm exec wrangler d1 migrations apply DB --remote
-pnpm exec wrangler r2 object put zahari-models/btc/BTC_FORTRESS_01.glb --file /absolute/path/to/BTC_FORTRESS_01.glb --content-type model/gltf-binary --remote
+node scripts/sync-models.mjs upload /absolute/path/to/model-source
+node scripts/sync-models.mjs verify /absolute/path/to/model-source
 pnpm exec wrangler secret bulk .env
 pnpm deploy
 ```
 
-Only the allowlisted `/media/btc/BTC_FORTRESS_01.glb` route serves the private bucket. No client-side R2 credentials or bucket upload endpoints exist. The browser necessarily receives the model bytes; this is not DRM. Model responses include ETags; account responses must never be cached.
+Only the allowlisted `/media/SAMPLE.glb` and `/media/btc/BTC_FORTRESS_01.glb` routes serve the private bucket. Other uploaded models are not yet presented in the app. No client-side R2 credentials or bucket upload endpoints exist. The browser necessarily receives the model bytes; this is not DRM. Model responses include ETags; account responses must never be cached.
 
 ## Authentication API
 
@@ -66,4 +68,4 @@ Passwords require 7–18 characters with a letter and digit; passcodes are exact
 
 ## Boundaries
 
-Live market data/news, prediction, payments, multiple asset models and structural model variants are not implemented in this release. The site says so explicitly. Lighting and camera controls are artistic user controls, not live signals. No domain was purchased or connected.
+Live market data/news, prediction, payments, an eight-world selector and structural model variants are not implemented in this release. The site says so explicitly. Four lighting modes initialize from browser local time and can be changed manually. The public sample has three illustrated 2.5D locations. The pricing page shows proposed memberships that cannot be purchased yet. No domain was purchased or connected.
