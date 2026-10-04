@@ -3,6 +3,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { createLandscape } from "./landscape";
+import { createEnvironment, type Place } from "./environment";
 import { moodForLocalHour } from "../lib/scene-time";
 
 function startViewer(root: HTMLElement) {
@@ -11,7 +12,7 @@ function startViewer(root: HTMLElement) {
   const progress = root.querySelector<HTMLElement>("[data-progress]")!;
   const retry = root.querySelector<HTMLButtonElement>("[data-retry]")!;
   const sample = root.dataset.sample === "true";
-  const landscape = createLandscape(host, sample ? "lowland" : "neutral");
+  const landscape = createLandscape(host, "lowland");
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({
@@ -26,6 +27,8 @@ function startViewer(root: HTMLElement) {
     return;
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.7));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.3;
   host.appendChild(renderer.domElement);
@@ -44,6 +47,13 @@ function startViewer(root: HTMLElement) {
   scene.add(hemisphere);
   const sun = new THREE.DirectionalLight("#ffdcc4", 3.5);
   sun.position.set(4, 7, 5);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -9;
+  sun.shadow.camera.right = 9;
+  sun.shadow.camera.top = 9;
+  sun.shadow.camera.bottom = -9;
+  sun.shadow.normalBias = 0.025;
   scene.add(sun);
   const fill = new THREE.DirectionalLight("#b3c9ff", 1.5);
   fill.position.set(-4, 2, -3);
@@ -57,6 +67,8 @@ function startViewer(root: HTMLElement) {
   pmrem.dispose();
   const anchor = new THREE.Group();
   scene.add(anchor);
+  const world = createEnvironment(scene);
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let alive = true;
   let visible = true;
   let loaded = false;
@@ -66,10 +78,11 @@ function startViewer(root: HTMLElement) {
     landscape.setParallax(camera.position.x * 5);
   });
   const reset = () => {
-    controls.target.set(0, -0.1, 0);
+    const mobile = host.clientWidth < 600;
+    controls.target.set(0, mobile ? -0.28 : -0.1, 0);
     camera.position
-      .set(3.6, 2.4, 4.7)
-      .multiplyScalar(1 / Math.min(1, camera.aspect))
+      .set(3.6, 1.5, 4.7)
+      .multiplyScalar((mobile ? 1.22 : 1) / Math.min(1, camera.aspect))
       .add(controls.target);
     controls.update();
   };
@@ -107,7 +120,8 @@ function startViewer(root: HTMLElement) {
     if (!visible || document.hidden || time - previous < 30) return;
     previous = time;
     controls.update();
-    // Static artwork should not continuously burn GPU/battery while idle.
+    if (world.animate(time / 1000, reducedMotion.matches)) needsRender = true;
+    if (landscape.animate(time / 1000, reducedMotion.matches)) needsRender = true;
     if (needsRender) {
       renderer.render(scene, camera);
       needsRender = false;
@@ -138,6 +152,10 @@ function startViewer(root: HTMLElement) {
       gltf.scene.position.sub(box.getCenter(new THREE.Vector3()));
       anchor.add(gltf.scene);
       anchor.scale.setScalar(scale);
+      gltf.scene.traverse((child) => {
+        if (child instanceof THREE.Mesh) child.castShadow = true;
+      });
+      world.setFloor((-size.y * scale) / 2 - 0.015);
       loaded = true;
       needsRender = true;
       loading.hidden = true;
@@ -200,6 +218,7 @@ function startViewer(root: HTMLElement) {
     hemisphere.intensity = mood.ambient;
     renderer.toneMappingExposure = mood.exposure;
     landscape.setMood(name);
+    world.setMood(name);
     root
       .querySelectorAll("[data-light]")
       .forEach((item) =>
@@ -222,9 +241,10 @@ function startViewer(root: HTMLElement) {
     .querySelectorAll<HTMLButtonElement>("[data-location]")
     .forEach((button) =>
       button.addEventListener("click", () => {
-        landscape.setLocation(
-          button.dataset.location as "lowland" | "pacific" | "sky",
-        );
+        const place = button.dataset.location as Place;
+        landscape.setLocation(place);
+        world.setPlace(place);
+        needsRender = true;
         root
           .querySelectorAll("[data-location]")
           .forEach((item) =>

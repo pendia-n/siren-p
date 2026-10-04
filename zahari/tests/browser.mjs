@@ -254,6 +254,15 @@ try {
   ]) {
     await page.goto(base + route);
     await page.waitForLoadState("networkidle");
+    if (route === "/pricing") {
+      assert.equal(await page.locator('nav[aria-label="Main navigation"] a[href="/pricing"]').count(), 1);
+      assert.equal(await page.locator(".plan-card").count(), 3);
+      assert.deepEqual(
+        await page.locator(".plan-price").allTextContents(),
+        ["$4.99 USD / month", "$8.99 USD / month", "$12.99 USD / month"],
+      );
+      assert.equal(await page.locator(".plan-card").filter({ hasText: "Free" }).count(), 0);
+    }
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

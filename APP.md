@@ -1,6 +1,6 @@
 # Zahari
 
-Zahari is the working web preview of SirenP's coin-inspired visual worlds. The public scene uses the supplied SAMPLE.glb and three 2.5D locations; the signed-in studio shows the BTC Fortress. The app lets visitors orbit the artwork, change lighting and download a screenshot.
+Zahari is the working web preview of SirenP's coin-inspired visual worlds. The public scene uses the supplied SAMPLE.glb and three layered locations with 3D contact terrain and animated illustrated atmosphere; the signed-in studio shows the BTC Fortress. The app lets visitors orbit the artwork, change lighting and download a screenshot.
 
 ## What works in this release
 
@@ -9,7 +9,7 @@ Zahari is the working web preview of SirenP's coin-inspired visual worlds. The p
 - Revocable 56-day JWT sessions using Secure, HttpOnly, SameSite=Lax cookies. No authentication tokens in browser storage.
 - Password changes, recovery-code enable/replace/disable and global sign-out. Verified recovery is a short-lived, single-use grant.
 - Three.js loads the sample and BTC Fortress from a private R2 bucket through allowlisted Worker routes. The browser receives models to render them; a private bucket does not prevent viewers saving delivered model bytes.
-- Dawn, daylight, dusk and night select from browser local time on each entry and remain manually switchable. The sample offers lowland, Pacific and sky illustrated locations.
+- Dawn, daylight, dusk and night select from browser local time on each entry and remain manually switchable. The sample offers lowland, Pacific and sky locations with 3D terrain, animated grass/water/clouds and reduced-motion support.
 - Original Zahari SVG branding and local web fonts.
 
 ## Why it exists
@@ -18,7 +18,7 @@ The intended experience is discovery and appreciation, not pressure to trade. Di
 
 ## Boundaries
 
-This release does not connect Vautim, news, sentiment, billing, prediction models, structural variants, all 28 assets or persistent saved scenes. Its price page presents free access and two proposed monthly memberships; checkout is not live. Lighting follows visitor local time on entry and is manually switchable. The supplied sample GLB has no authored animation clips; orbiting it does not invent changing geometry.
+This release does not connect Vautim, news, sentiment, billing, prediction models, structural variants, all 28 assets or persistent saved scenes. Its pricing page lists the three user-specified monthly prices ($4.99 for one coin, $8.99 for five, $12.99 for all eight launch coins) without a free membership tier; checkout is not live. Lighting follows visitor local time on entry and is manually switchable. The supplied sample GLB has no authored animation clips; the scenery moves, but the model's geometry does not morph.
 
 ## Infrastructure
 

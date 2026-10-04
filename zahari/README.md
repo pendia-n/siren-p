@@ -68,4 +68,4 @@ Passwords require 7–18 characters with a letter and digit; passcodes are exact
 
 ## Boundaries
 
-Live market data/news, prediction, payments, an eight-world selector and structural model variants are not implemented in this release. The site says so explicitly. Four lighting modes initialize from browser local time and can be changed manually. The public sample has three illustrated 2.5D locations. The pricing page shows proposed memberships that cannot be purchased yet. No domain was purchased or connected.
+Live market data/news, prediction, payments, an eight-world selector and structural model variants are not implemented in this release. The site says so explicitly. Four lighting modes initialize from browser local time and can be changed manually. The public sample has three layered locations with 3D ground contact, moving grass/water/clouds, and reduced-motion support. The pricing page lists the user-specified $4.99/$8.99/$12.99 monthly tiers for one/five/eight launch coins, with no free membership tier; checkout is not connected yet. No domain was purchased or connected.
