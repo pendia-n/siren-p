@@ -8,6 +8,20 @@ const seeded = (n: number) => {
   return value - Math.floor(value);
 };
 
+function softTexture(color: string) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d")!;
+  const gradient = context.createRadialGradient(64, 64, 5, 64, 64, 62);
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(0.52, color.replace(/,[^,]*\)$/, ", 0.16)"));
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(canvas);
+}
+
 function irregularLand(
   radiusX: number,
   radiusZ: number,
@@ -113,6 +127,18 @@ export function createEnvironment(scene: THREE.Scene) {
   blades.instanceMatrix.needsUpdate = true;
   blades.frustumCulled = false;
   ground.add(blades);
+  const windShadowTexture = softTexture("rgba(25,61,55,0.28)");
+  const windShadows: THREE.Mesh[] = [];
+  for (let i = 0; i < 2; i++) {
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.8 + i, 2.5 + i * 0.6),
+      new THREE.MeshBasicMaterial({ map: windShadowTexture, transparent: true, depthWrite: false, toneMapped: false }),
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.set(i ? 3 : -4, 0.018, i ? 2.4 : -2.2);
+    ground.add(shadow);
+    windShadows.push(shadow);
+  }
 
   const seaGeometry = new THREE.PlaneGeometry(32, 32, 72, 72);
   const seaBase = seaGeometry.attributes.position.array.slice() as Float32Array;
@@ -150,6 +176,25 @@ export function createEnvironment(scene: THREE.Scene) {
     foam.add(line);
   }
   sea.add(foam);
+  const tideLines: THREE.LineLoop[] = [];
+  for (let i = 0; i < 3; i++) {
+    const geometry = new THREE.BufferGeometry();
+    const points = new Float32Array(84 * 3);
+    for (let j = 0; j < 84; j++) {
+      const angle = (j / 84) * Math.PI * 2;
+      const radius = 2.18 + i * 0.15;
+      points[j * 3] = Math.cos(angle) * radius;
+      points[j * 3 + 1] = -0.025;
+      points[j * 3 + 2] = Math.sin(angle) * radius * 0.91;
+    }
+    geometry.setAttribute("position", new THREE.BufferAttribute(points, 3));
+    const line = new THREE.LineLoop(
+      geometry,
+      new THREE.LineBasicMaterial({ color: "#e6f1ea", transparent: true, opacity: 0.38 - i * 0.08, depthWrite: false }),
+    );
+    sea.add(line);
+    tideLines.push(line);
+  }
 
   const plateau = irregularLand(2.05, 1.9, 1.1, "#696e72", "#454f60");
   highland.add(plateau);
@@ -174,6 +219,17 @@ export function createEnvironment(scene: THREE.Scene) {
     }
     highland.add(group);
     clouds.push(group);
+  }
+  const mistTexture = softTexture("rgba(245,249,245,0.68)");
+  const mists: THREE.Sprite[] = [];
+  for (let i = 0; i < 7; i++) {
+    const mist = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: mistTexture, color: "#eef5f4", transparent: true, opacity: 0.42, depthWrite: false }),
+    );
+    mist.position.set(-3.2 + i * 1.05, -0.33 - (i % 3) * 0.13, 2.15 + (i % 2) * 0.35);
+    mist.scale.set(2.8 + (i % 3) * 0.5, 0.68 + (i % 2) * 0.25, 1);
+    highland.add(mist);
+    mists.push(mist);
   }
 
   let place: Place = "lowland";
@@ -224,10 +280,32 @@ export function createEnvironment(scene: THREE.Scene) {
       positions.needsUpdate = true;
       seaGeometry.computeVertexNormals();
       foam.rotation.y = Math.sin(clock * 0.3) * 0.03;
+      tideLines.forEach((line, index) => {
+        const positions = line.geometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+          const angle = (i / positions.count) * Math.PI * 2;
+          const swell = Math.sin(clock * 1.2 - index * 1.5 + angle * 5) * 0.04;
+          const radius = 2.18 + index * 0.15 + swell;
+          positions.setXYZ(i, Math.cos(angle) * radius, -0.025 + Math.sin(clock * 1.2 + angle * 4) * 0.012, Math.sin(angle) * radius * 0.91);
+        }
+        positions.needsUpdate = true;
+        (line.material as THREE.LineBasicMaterial).opacity = 0.26 + Math.max(0, Math.sin(clock * 1.2 - index * 1.5)) * 0.22;
+      });
     } else {
       clouds.forEach((cloud, i) => {
         cloud.position.x = cloudOrigins[i] + Math.sin(clock * 0.23 + i * 1.7) * (0.16 + (i % 3) * 0.05);
         cloud.position.y = -0.95 - seeded(i + 15) * 0.6 + Math.sin(clock * 0.45 + i * 2) * 0.035;
+      });
+      mists.forEach((mist, i) => {
+        mist.position.x = -3.2 + i * 1.05 + Math.sin(clock * 0.43 + i * 0.7) * 0.34;
+        mist.position.y = -0.33 - (i % 3) * 0.13 + Math.sin(clock * 0.57 + i) * 0.045;
+        (mist.material as THREE.SpriteMaterial).opacity = 0.3 + Math.sin(clock * 0.75 + i * 0.8) * 0.13;
+      });
+    }
+    if (place === "lowland") {
+      windShadows.forEach((shadow, i) => {
+        shadow.position.x = ((clock * (0.34 + i * 0.12) + i * 5) % 16) - 8;
+        shadow.position.z = (i ? 2.4 : -2.2) + Math.sin(clock * 0.22 + i) * 0.3;
       });
     }
     return true;

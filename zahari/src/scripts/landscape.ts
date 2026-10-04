@@ -36,6 +36,33 @@ const colors: Record<
 };
 
 export function createLandscape(host: HTMLElement, initial: Location) {
+  const cloudSprites = Array.from({ length: 4 }, (_, variant) => {
+    const sprite = document.createElement("canvas");
+    sprite.width = 360;
+    sprite.height = 180;
+    const painter = sprite.getContext("2d")!;
+    const puff = (x: number, y: number, radius: number, shadow: boolean) => {
+      const fill = painter.createRadialGradient(x, y, radius * 0.08, x, y, radius);
+      fill.addColorStop(0, shadow ? "#66869b23" : "#fffdf571");
+      fill.addColorStop(0.55, shadow ? "#7d98a716" : "#fffdf538");
+      fill.addColorStop(1, "#ffffff00");
+      painter.fillStyle = fill;
+      painter.beginPath();
+      painter.ellipse(x, y, radius, radius * (shadow ? 0.48 : 0.64), 0, 0, Math.PI * 2);
+      painter.fill();
+    };
+    for (let i = 0; i < 5; i++) {
+      const x = 64 + i * 55 + Math.sin(i * 4 + variant) * 15;
+      const y = 112 + Math.cos(i * 2.3 + variant) * 8;
+      puff(x, y + 15, 48 + (i % 3) * 8, true);
+    }
+    for (let i = 0; i < 5; i++) {
+      const x = 48 + i * 55 + Math.sin(i * 3.4 + variant * 1.7) * 13;
+      const y = 84 - (i % 3) * 11 + Math.cos(i * 1.8 + variant) * 7;
+      puff(x, y, 36 + ((i + variant) % 3) * 11, false);
+    }
+    return sprite;
+  });
   const canvas = document.createElement("canvas");
   canvas.className = "landscape-canvas";
   canvas.setAttribute("aria-hidden", "true");
@@ -93,29 +120,15 @@ export function createLandscape(host: HTMLElement, initial: Location) {
     ctx.arc(glowX, glowY, mood === "night" ? 11 : 20, 0, Math.PI * 2);
     ctx.fill();
 
-    const drawCloud = (x: number, y: number, scale: number, opacity: number) => {
+    for (let i = 0; i < 5; i++) {
+      const drift = phase * (2.4 + (i % 3) * 1.2);
+      const x = ((i * 287 + drift) % (width + 280)) - 140 + parallax * 0.22;
+      const y = height * (0.07 + ((i * 13) % 29) / 100);
+      const scale = 0.46 + (i % 3) * 0.12;
       ctx.save();
-      ctx.globalAlpha = opacity;
-      const shadow = mood === "night" ? "#7484a5" : "#8299ad";
-      ctx.fillStyle = shadow;
-      ctx.beginPath();
-      ctx.ellipse(x, y + scale * 10, scale * 85, scale * 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = mood === "night" ? "#cbd5e5" : "#fffdf5";
-      for (const [dx, dy, rx, ry] of [
-        [-42, 0, 42, 14], [0, -11, 45, 24], [38, -4, 44, 18], [3, 3, 81, 15],
-      ]) {
-        ctx.beginPath();
-        ctx.ellipse(x + dx * scale, y + dy * scale, rx * scale, ry * scale, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.globalAlpha = mood === "night" ? 0.28 : location === "sky" ? 0.72 : 0.48;
+      ctx.drawImage(cloudSprites[i % cloudSprites.length], x - 180 * scale, y - 85 * scale, 360 * scale, 180 * scale);
       ctx.restore();
-    };
-    for (let i = 0; i < 8; i++) {
-      const drift = phase * (3 + (i % 3) * 1.5);
-      const x = ((i * 239 + drift) % (width + 360)) - 180 + parallax * 0.22;
-      const y = height * (0.12 + ((i * 13) % 38) / 100);
-      drawCloud(x, y, 0.45 + (i % 4) * 0.16, location === "sky" ? 0.85 : 0.44);
     }
 
     // The horizon, middle and foreground move by different amounts as the model orbits.
