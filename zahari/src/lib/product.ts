@@ -12,6 +12,16 @@ export const ASSETS = [
   "XAUT",
 ] as const;
 export type Asset = (typeof ASSETS)[number];
+export const MODEL_COUNTS: Record<Asset, number> = {
+  AAVE: 4,
+  BNB: 6,
+  BTC: 8,
+  ETH: 8,
+  LINK: 6,
+  SOL: 6,
+  UNI: 4,
+  XAUT: 3,
+};
 export const isAsset = (value: string): value is Asset =>
   ASSETS.includes(value as Asset);
 

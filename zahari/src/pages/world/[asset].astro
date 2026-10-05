@@ -88,6 +88,7 @@ const modelUrl = scene
   const panel = document.querySelector<HTMLElement>("[data-news-asset]");
   if (panel) {
     const asset = panel.dataset.newsAsset;
+    let expiryTimer: number | undefined;
     const refreshNews = () =>
       fetch(`/api/news/${asset}`, {
         credentials: "same-origin",
@@ -96,9 +97,10 @@ const modelUrl = scene
         .then(async (response) => {
           if (!response.ok) throw new Error("News unavailable");
           const data = (await response.json()) as {
-            news: { title: string; summary: string; url: string } | null;
+            news: { title: string; summary: string; url: string; expiresAt: number } | null;
             message?: string;
           };
+          window.clearTimeout(expiryTimer);
           const message = panel.querySelector<HTMLElement>(
             "[data-news-message]",
           )!;
@@ -118,6 +120,11 @@ const modelUrl = scene
           panel.querySelector<HTMLAnchorElement>("[data-news-link]")!.href =
             data.news.url;
           panel.querySelector<HTMLElement>("[data-news-story]")!.hidden = false;
+          expiryTimer = window.setTimeout(() => {
+            panel.querySelector<HTMLElement>("[data-news-story]")!.hidden = true;
+            message.hidden = false;
+            message.textContent = "This story has expired. Checking for recent news…";
+          }, Math.max(0, data.news.expiresAt * 1000 - Date.now()));
         })
         .catch(() => {
           panel.querySelector<HTMLElement>("[data-news-message]")!.textContent =
@@ -125,7 +132,10 @@ const modelUrl = scene
         });
     void refreshNews();
     const timer = window.setInterval(refreshNews, 60_000);
-    window.addEventListener("pagehide", () => window.clearInterval(timer), {
+    window.addEventListener("pagehide", () => {
+      window.clearInterval(timer);
+      window.clearTimeout(expiryTimer);
+    }, {
       once: true,
     });
   }

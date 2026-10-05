@@ -152,6 +152,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
               summary: row.summary,
               url: row.source_url,
               publishedAt: row.published_at,
+              expiresAt: row.visible_until,
             }
           : null,
     },

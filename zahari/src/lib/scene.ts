@@ -1,6 +1,6 @@
 import { bindings } from "./runtime";
 import type { Tier } from "./stripe";
-import type { Asset } from "./product";
+import { MODEL_COUNTS, type Asset } from "./product";
 import { chooseModelIndex, choosePlacement } from "./scene-rules";
 
 const cadence: Record<Tier, number> = { one: 14400, five: 5400, eight: 1320 };
@@ -67,7 +67,8 @@ export async function sceneFor(
   ).objects
     .filter((item) => item.key.endsWith(".glb"))
     .sort((a, b) => a.key.localeCompare(b.key));
-  if (!models.length) return null;
+  if (models.length < MODEL_COUNTS[asset])
+    return cached ? { ...cached, stale: true } : null;
   const latest = rows[0];
   const model = models[chooseModelIndex(rows, models.length)].key
     .split("/")

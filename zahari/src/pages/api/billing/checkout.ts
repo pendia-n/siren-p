@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { bindings } from "../../../lib/runtime";
 import { PLANS, stripe, type Tier } from "../../../lib/stripe";
+import { ASSETS, MODEL_COUNTS } from "../../../lib/product";
 
 export const POST: APIRoute = async ({ request, locals, url }) => {
   const back = (reason: string) =>
@@ -25,6 +26,23 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
     .bind(new Date(Date.now() - 30 * 60_000).toISOString())
     .first<{ assets: number }>();
   if ((feed?.assets ?? 0) < 8) return back("data");
+  try {
+    const artworkReady = await Promise.all(
+      ASSETS.map(
+        async (asset) =>
+          (
+            await bindings.MODELS.list({
+              prefix: `${asset.toLowerCase()}/`,
+              limit: 100,
+            })
+          ).objects.filter((object) => object.key.endsWith(".glb")).length >=
+          MODEL_COUNTS[asset],
+      ),
+    );
+    if (artworkReady.some((ready) => !ready)) return back("artwork");
+  } catch {
+    return back("artwork");
+  }
   const existing = await bindings.DB.prepare(
     "SELECT stripe_customer_id,status,current_period_end FROM memberships WHERE user_id=?",
   )
