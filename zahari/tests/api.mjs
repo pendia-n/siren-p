@@ -129,6 +129,18 @@ const identity = await (await first.api("session")).json();
 assert.equal(identity.user.username, user);
 console.log(`TEST_ACCOUNT_ID=${identity.user.id}`);
 ok("registration creates a 56-day secure HttpOnly session");
+const studio = await first.request("/studio");
+assert.equal(studio.status, 200);
+assert.match(await studio.text(), /SAMPLE WORLD/);
+assert.equal(
+  (await first.request("/media/btc/BTC_FORTRESS_01.glb")).status,
+  403,
+);
+assert.equal(
+  (await request(`${base}/media/btc/BTC_FORTRESS_01.glb`)).status,
+  403,
+);
+ok("unpaid signup sees SAMPLE and cannot download BTC model");
 await second.api(
   "register",
   { username: user.toUpperCase(), password, passcode },
@@ -222,23 +234,22 @@ await recovery.api(
   429,
 );
 ok("passcode brute force is throttled");
-const model = await request(`${base}/media/btc/BTC_FORTRESS_01.glb`);
+const model = await request(`${base}/media/SAMPLE.glb`);
 assert.equal(model.status, 200);
 const modelData = Buffer.from(await model.arrayBuffer());
 assert.equal(modelData.toString("ascii", 0, 4), "glTF");
-assert.equal(modelData.length, 12_082_900);
-if (process.env.TEST_MODEL_PATH)
+if (process.env.TEST_SAMPLE_PATH)
   assert.equal(
     createHash("sha256").update(modelData).digest("hex"),
     createHash("sha256")
-      .update(readFileSync(process.env.TEST_MODEL_PATH))
+      .update(readFileSync(process.env.TEST_SAMPLE_PATH))
       .digest("hex"),
   );
-const cached = await request(`${base}/media/btc/BTC_FORTRESS_01.glb`, {
+const cached = await request(`${base}/media/SAMPLE.glb`, {
   headers: { "If-None-Match": model.headers.get("etag") },
 });
 assert.equal(cached.status, 304);
-ok("R2 serves the original GLB with conditional caching");
+ok("R2 serves only the public SAMPLE with conditional caching");
 console.log(
   `${checks} API checks passed. Clean up only test user ID printed above.`,
 );

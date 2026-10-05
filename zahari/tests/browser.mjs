@@ -168,6 +168,15 @@ try {
     .getByRole("button", { name: "Create account", exact: true })
     .click();
   await page.waitForURL("**/studio", { timeout: 30000 });
+  assert.equal(
+    await page.locator("[data-viewer]").getAttribute("data-sample"),
+    "true",
+  );
+  assert.equal(
+    await page.getByText("Your sample world", { exact: false }).count(),
+    1,
+  );
+  assert.equal(await page.locator('a[href^="/world/"]').count(), 0);
   if (process.env.SKIP_VISUAL !== "1")
     await page
       .locator('[data-viewer][data-loaded="true"]')
@@ -255,13 +264,22 @@ try {
     await page.goto(base + route);
     await page.waitForLoadState("networkidle");
     if (route === "/pricing") {
-      assert.equal(await page.locator('nav[aria-label="Main navigation"] a[href="/pricing"]').count(), 1);
-      assert.equal(await page.locator(".plan-card").count(), 3);
-      assert.deepEqual(
-        await page.locator(".plan-price").allTextContents(),
-        ["$4.99 USD / month", "$8.99 USD / month", "$12.99 USD / month"],
+      assert.equal(
+        await page
+          .locator('nav[aria-label="Main navigation"] a[href="/pricing"]')
+          .count(),
+        1,
       );
-      assert.equal(await page.locator(".plan-card").filter({ hasText: "Free" }).count(), 0);
+      assert.equal(await page.locator(".plan-card").count(), 3);
+      assert.deepEqual(await page.locator(".plan-price").allTextContents(), [
+        "$4.99 USD / month",
+        "$8.99 USD / month",
+        "$12.99 USD / month",
+      ]);
+      assert.equal(
+        await page.locator(".plan-card").filter({ hasText: "Free" }).count(),
+        0,
+      );
     }
     assert.equal(
       await page.evaluate(
