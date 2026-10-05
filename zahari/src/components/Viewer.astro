@@ -2,22 +2,38 @@
 import Icon from "./Icon.astro";
 interface Props {
   sample?: boolean;
+  asset?: string;
+  modelUrl?: string;
+  location?: string;
+  buried?: boolean;
+  sceneAsset?: string;
 }
-const { sample = false } = Astro.props;
+const {
+  sample = false,
+  asset = "BTC",
+  modelUrl,
+  location = "lowland",
+  buried = false,
+  sceneAsset,
+} = Astro.props;
 ---
 
 <section
   class="world-viewer"
   data-viewer
   data-sample={String(sample)}
+  data-model-url={modelUrl ?? ""}
+  data-location-initial={location}
+  data-buried={String(buried)}
+  data-scene-asset={sceneAsset ?? ""}
   aria-label={
-    sample ? "Interactive sample artwork" : "Interactive BTC Fortress"
+    sample ? "Interactive sample artwork" : `Interactive ${asset} world`
   }
 >
   <div class="viewer-top">
     <span class="viewer-label">
-      {sample ? "ZAHARI" : "BTC"} <span>/</span>{" "}
-      {sample ? "SAMPLE WORLD" : "FORTRESS"}
+      {sample ? "ZAHARI" : asset} <span>/</span>{" "}
+      {sample ? "SAMPLE WORLD" : "COIN WORLD"}
     </span>
     <span class="pill">
       <span class="status-dot"></span> Art preview

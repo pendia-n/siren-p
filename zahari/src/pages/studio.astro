@@ -1,6 +1,27 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Viewer from "../components/Viewer.astro";
+import { bindings } from "../lib/runtime";
+import { ASSETS, activeMembership, membership, slots } from "../lib/product";
+const user = Astro.locals.user!;
+const member = await membership(user.id);
+const paid = activeMembership(member);
+const choices = paid
+  ? (
+      await bindings.DB.prepare(
+        "SELECT asset,selected_at FROM coin_selections WHERE user_id=? ORDER BY selected_at",
+      )
+        .bind(user.id)
+        .all<{ asset: string; selected_at: number }>()
+    ).results
+  : [];
+const selected = choices.map((row) => row.asset);
+const canReplace = Boolean(
+  member?.tier === "one" &&
+  choices[0] &&
+  member.current_period_start > choices[0].selected_at,
+);
+const maxSlots = paid && member ? slots(member.tier) : 0;
 ---
 
 <Layout title="Your world">
@@ -9,12 +30,73 @@ import Viewer from "../components/Viewer.astro";
       <div>
         <p class="eyebrow">YOUR EXPLORATION SPACE</p>
         <h1>
-          The BTC Fortress<span class="heading-dot">.</span>
+          Your sample world<span class="heading-dot">.</span>
         </h1>
       </div>
       <span class="pill">Interactive preview</span>
     </div>
-    <Viewer />
+    <Viewer sample />
+    {Astro.url.searchParams.get("checkout") === "return" && !paid && (
+      <p class="data-note" role="status">
+        Stripe has returned you to Zahari. Your coin worlds appear after payment
+        confirmation; refresh in a moment. This SAMPLE remains available while
+        you wait.
+      </p>
+    )}
+    {paid ? (
+      <section class="studio-caption coin-section">
+        <div>
+          <h2>Your coin worlds</h2>
+          <p>
+            {selected.length} of {maxSlots} places filled. Choose a world to
+            explore it.
+          </p>
+        </div>
+        <div class="coin-grid">
+          {ASSETS.map((asset) => (
+            <div class="settings-card">
+              <h3>{asset}</h3>
+              {selected.includes(asset) ? (
+                <>
+                  <a
+                    class="button secondary"
+                    href={`/world/${asset.toLowerCase()}`}
+                  >
+                    Visit world
+                  </a>
+                  {member?.tier !== "one" && (
+                    <form method="POST" action="/api/coins">
+                      <input type="hidden" name="asset" value={asset} />
+                      <input type="hidden" name="action" value="remove" />
+                      <button type="submit" class="button secondary">
+                        Remove
+                      </button>
+                    </form>
+                  )}
+                </>
+              ) : (
+                <form method="POST" action="/api/coins">
+                  <input type="hidden" name="asset" value={asset} />
+                  <input type="hidden" name="action" value="add" />
+                  <button
+                    type="submit"
+                    class="button secondary"
+                    disabled={selected.length >= maxSlots && !canReplace}
+                  >
+                    Choose {asset}
+                  </button>
+                </form>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    ) : (
+      <p class="data-note">
+        Your account includes only this SAMPLE world.{" "}
+        <a href="/pricing">Choose a membership</a> to unlock coin worlds.
+      </p>
+    )}
     <div class="studio-caption">
       <div>
         <h2>Stay a little. Look a little closer.</h2>
@@ -23,7 +105,7 @@ import Viewer from "../components/Viewer.astro";
         </p>
       </div>
       <p class="data-note">
-        Market data and news are not connected.
+        This is the free sample. Coin worlds require a paid membership.
         <br />
         Lighting starts from your device time and remains under your control.
       </p>

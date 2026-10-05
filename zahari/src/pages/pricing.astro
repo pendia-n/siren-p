@@ -1,5 +1,17 @@
 ---
 import Layout from "../layouts/Layout.astro";
+const checkoutMessage: Record<string, string> = {
+  configuring: "Checkout is still being configured. No payment was taken.",
+  news: "The news service is not ready. No payment was taken.",
+  data: "The live market feed is not ready for all eight worlds. No payment was taken.",
+  "already-member":
+    "You already have a membership. Manage it from your profile.",
+  unavailable:
+    "Checkout could not open. No payment was taken; please try again later.",
+  pending:
+    "You already have an open Checkout. Finish it or try again after it expires; no second payment was started.",
+};
+const notice = checkoutMessage[Astro.url.searchParams.get("checkout") ?? ""];
 ---
 
 <Layout
@@ -13,45 +25,73 @@ import Layout from "../layouts/Layout.astro";
       Every tier is a monthly card subscription. The difference is how many of
       the eight launch coins you can select.
     </p>
+    {notice && (
+      <p class="form-status" role="alert">
+        {notice}
+      </p>
+    )}
     <div class="plan-grid">
       <article class="plan-card">
         <span class="pill">ONE COIN</span>
         <h2>One</h2>
-        <p class="plan-price">$4.99 <span>USD / month</span></p>
+        <p class="plan-price">
+          $4.99 <span>USD / month</span>
+        </p>
         <p>One world to return to.</p>
         <ul class="feature-list">
           <li>Choose one launch coin</li>
-          <li>Explore its available authored 3D models</li>
+          <li>Your world refreshes every 4 hours</li>
+          <li>No news stories in this plan</li>
+          <li>Keep your chosen coin until your next renewal</li>
           <li>Change the light, orbit and save a view</li>
         </ul>
       </article>
       <article class="plan-card featured">
         <span class="pill">FIVE COINS</span>
         <h2>Five</h2>
-        <p class="plan-price">$8.99 <span>USD / month</span></p>
+        <p class="plan-price">
+          $8.99 <span>USD / month</span>
+        </p>
         <p>A small constellation of your own.</p>
         <ul class="feature-list">
           <li>Choose five launch coins</li>
-          <li>Each gets the same full world controls</li>
-          <li>Move between your selected worlds</li>
+          <li>Worlds refresh every 90 minutes</li>
+          <li>Relevant news checked up to every 4 hours while viewed</li>
+          <li>Swap your chosen coins</li>
         </ul>
       </article>
       <article class="plan-card">
         <span class="pill">EIGHT COINS</span>
         <h2>Eight</h2>
-        <p class="plan-price">$12.99 <span>USD / month</span></p>
+        <p class="plan-price">
+          $12.99 <span>USD / month</span>
+        </p>
         <p>The whole launch collection.</p>
         <ul class="feature-list">
           <li>AAVE, BNB, BTC, ETH, LINK, SOL, UNI and XAUT</li>
-          <li>Access every launch coin world</li>
-          <li>Move between all eight subjects</li>
+          <li>Worlds refresh every 22 minutes</li>
+          <li>Relevant news checked up to every 2 hours while viewed</li>
+          <li>Swap your chosen coins</li>
         </ul>
       </article>
     </div>
+    <div class="plan-grid">
+      {(["one", "five", "eight"] as const).map((tier) => (
+        <form method="POST" action="/api/billing/checkout">
+          <input type="hidden" name="tier" value={tier} />
+          <button class="button" type="submit">
+            Subscribe to{" "}
+            {tier === "one" ? "One" : tier === "five" ? "Five" : "Eight"}
+          </button>
+        </form>
+      ))}
+    </div>
     <p class="pricing-footnote">
-      The public sample is separate from membership; it is not a free plan.
-      Checkout and coin selection are being connected. No card can be charged
-      on this page today. Market-driven changes and news are not active yet.
+      The public sample is separate from membership. Sign in before subscribing.
+      A successful payment unlocks selection of your coin worlds. Market-driven
+      changes and news require the data feed to be connected. A news story
+      appears for up to one hour after it is found; if there is no relevant
+      recent story, the panel stays empty.
     </p>
   </section>
 </Layout>

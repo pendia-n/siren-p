@@ -11,6 +11,13 @@ export interface Bindings {
   DB: D1Database;
   MODELS: R2Bucket;
   ZAHARI_JWT_SECRET: string;
+  STRIPE_API_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_PRODUCT_ONE_ID?: string;
+  STRIPE_PRODUCT_FIVE_ID?: string;
+  STRIPE_PRODUCT_EIGHT_ID?: string;
+  TAVILY_API_KEY?: string;
+  ZAHARI_INGEST_SECRET?: string;
 }
 export interface SessionUser {
   id: string;

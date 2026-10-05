@@ -1,0 +1,132 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Viewer from "../../components/Viewer.astro";
+import { bindings } from "../../lib/runtime";
+import { isAsset, ownsAsset } from "../../lib/product";
+import { membership } from "../../lib/product";
+import { sceneFor } from "../../lib/scene";
+const asset = Astro.params.asset?.toUpperCase() ?? "";
+if (
+  !Astro.locals.user ||
+  !isAsset(asset) ||
+  !(await ownsAsset(Astro.locals.user.id, asset))
+)
+  return Astro.redirect("/studio", 303);
+const member = await membership(Astro.locals.user.id);
+const started = await bindings.DB.prepare(
+  "SELECT started_at FROM memberships WHERE user_id=?",
+)
+  .bind(Astro.locals.user.id)
+  .first<{ started_at: number }>();
+const scene = member
+  ? await sceneFor(
+      Astro.locals.user.id,
+      asset,
+      member.tier,
+      started?.started_at ?? 0,
+    )
+  : null;
+const modelUrl = scene
+  ? `/api/model/${asset}/${encodeURIComponent(scene.model_name)}`
+  : undefined;
+---
+
+<Layout title={`${asset} world`}>
+  <section class="studio page-width">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">YOUR COIN WORLD</p>
+        <h1>
+          {asset}
+          <span class="heading-dot">.</span>
+        </h1>
+      </div>
+      <a class="button secondary" href="/studio">
+        All worlds
+      </a>
+    </div>
+    <div class="world-stage">
+      {modelUrl ? (
+        <Viewer
+          asset={asset}
+          modelUrl={modelUrl}
+          location={scene!.location}
+          buried={Boolean(scene!.buried)}
+          sceneAsset={asset}
+        />
+      ) : (
+        <p>
+          Waiting for this coin's market data and artwork. No scene is invented
+          while the feed is unavailable.
+        </p>
+      )}
+      {member?.tier !== "one" && (
+        <aside class="news-panel" data-news-asset={asset} aria-live="polite">
+          <h2>In the world</h2>
+          <p data-news-message>Checking for recent news…</p>
+          <div data-news-story hidden>
+            <h3 data-news-title></h3>
+            <p data-news-summary></p>
+            <a data-news-link target="_blank" rel="noopener noreferrer">
+              Read the source ↗
+            </a>
+          </div>
+        </aside>
+      )}
+    </div>
+    {scene && (
+      <p class="data-note">
+        {scene.stale
+          ? "Market feed is delayed; showing the last confirmed scene."
+          : `Scene based on ST 1m data through ${scene.source_timestamp}. Next update after ${new Date(scene.expires_at * 1000).toLocaleString("en")}.`}
+      </p>
+    )}
+    <p class="data-note">This artwork is not a price forecast.</p>
+  </section>
+</Layout>
+<script>
+  const panel = document.querySelector<HTMLElement>("[data-news-asset]");
+  if (panel) {
+    const asset = panel.dataset.newsAsset;
+    const refreshNews = () =>
+      fetch(`/api/news/${asset}`, {
+        credentials: "same-origin",
+        cache: "no-store",
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error("News unavailable");
+          const data = (await response.json()) as {
+            news: { title: string; summary: string; url: string } | null;
+            message?: string;
+          };
+          const message = panel.querySelector<HTMLElement>(
+            "[data-news-message]",
+          )!;
+          if (!data.news) {
+            message.hidden = false;
+            message.textContent =
+              data.message ?? "No recent verified story to show right now.";
+            panel.querySelector<HTMLElement>("[data-news-story]")!.hidden =
+              true;
+            return;
+          }
+          message.hidden = true;
+          panel.querySelector<HTMLElement>("[data-news-title]")!.textContent =
+            data.news.title;
+          panel.querySelector<HTMLElement>("[data-news-summary]")!.textContent =
+            data.news.summary;
+          panel.querySelector<HTMLAnchorElement>("[data-news-link]")!.href =
+            data.news.url;
+          panel.querySelector<HTMLElement>("[data-news-story]")!.hidden = false;
+        })
+        .catch(() => {
+          panel.querySelector<HTMLElement>("[data-news-message]")!.textContent =
+            "News is temporarily unavailable.";
+        });
+    void refreshNews();
+    const timer = window.setInterval(refreshNews, 60_000);
+    window.addEventListener("pagehide", () => window.clearInterval(timer), {
+      once: true,
+    });
+  }
+</script>

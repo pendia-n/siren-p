@@ -12,7 +12,8 @@ function startViewer(root: HTMLElement) {
   const progress = root.querySelector<HTMLElement>("[data-progress]")!;
   const retry = root.querySelector<HTMLButtonElement>("[data-retry]")!;
   const sample = root.dataset.sample === "true";
-  const landscape = createLandscape(host, "lowland");
+  const initialPlace = (root.dataset.locationInitial || "lowland") as Place;
+  const landscape = createLandscape(host, initialPlace);
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({
@@ -68,6 +69,7 @@ function startViewer(root: HTMLElement) {
   const anchor = new THREE.Group();
   scene.add(anchor);
   const world = createEnvironment(scene);
+  world.setPlace(initialPlace);
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let alive = true;
   let visible = true;
@@ -121,7 +123,8 @@ function startViewer(root: HTMLElement) {
     previous = time;
     controls.update();
     if (world.animate(time / 1000, reducedMotion.matches)) needsRender = true;
-    if (landscape.animate(time / 1000, reducedMotion.matches)) needsRender = true;
+    if (landscape.animate(time / 1000, reducedMotion.matches))
+      needsRender = true;
     if (needsRender) {
       renderer.render(scene, camera);
       needsRender = false;
@@ -136,7 +139,9 @@ function startViewer(root: HTMLElement) {
     progress.textContent = "Opening the artwork…";
     try {
       const gltf = await loader.loadAsync(
-        sample ? "/media/SAMPLE.glb" : "/media/btc/BTC_FORTRESS_01.glb",
+        sample
+          ? "/media/SAMPLE.glb"
+          : root.dataset.modelUrl || "/media/SAMPLE.glb",
         (event) => {
           if (event.total)
             progress.textContent = `Opening the artwork… ${Math.round((event.loaded / event.total) * 100)}%`;
@@ -146,12 +151,17 @@ function startViewer(root: HTMLElement) {
         disposeObject(gltf.scene);
         return;
       }
+      for (const child of [...anchor.children]) {
+        anchor.remove(child);
+        disposeObject(child);
+      }
       const box = new THREE.Box3().setFromObject(gltf.scene);
       const size = box.getSize(new THREE.Vector3());
       const scale = 3 / Math.max(size.x, size.y, size.z);
       gltf.scene.position.sub(box.getCenter(new THREE.Vector3()));
       anchor.add(gltf.scene);
       anchor.scale.setScalar(scale);
+      anchor.position.y = root.dataset.buried === "true" ? -0.35 : 0;
       gltf.scene.traverse((child) => {
         if (child instanceof THREE.Mesh) child.castShadow = true;
       });
@@ -170,6 +180,36 @@ function startViewer(root: HTMLElement) {
   }
   retry.addEventListener("click", load);
   void load();
+  if (root.dataset.sceneAsset) {
+    const refresh = async () => {
+      if (!alive || document.hidden) return;
+      try {
+        const response = await fetch(`/api/scene/${root.dataset.sceneAsset}`, {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const result = (await response.json()) as {
+          scene: { modelUrl: string; location: Place; buried: boolean } | null;
+        };
+        if (!result.scene) return;
+        const changed = root.dataset.modelUrl !== result.scene.modelUrl;
+        root.dataset.modelUrl = result.scene.modelUrl;
+        root.dataset.buried = String(result.scene.buried);
+        landscape.setLocation(result.scene.location);
+        world.setPlace(result.scene.location);
+        anchor.position.y = result.scene.buried ? -0.35 : 0;
+        needsRender = true;
+        if (changed) await load();
+      } catch {
+        /* Keep the last verified scene while offline. */
+      }
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("pagehide", () => window.clearInterval(timer), {
+      once: true,
+    });
+  }
   const moods: Record<
     "dawn" | "day" | "dusk" | "night",
     {
@@ -284,7 +324,7 @@ function startViewer(root: HTMLElement) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `zahari-${sample ? "sample" : "btc-fortress"}-${new Date().toISOString().slice(0, 10)}.png`;
+        link.download = `zahari-${sample ? "sample" : root.querySelector(".viewer-label")?.textContent?.trim().split(" ")[0]?.toLowerCase() || "world"}-${new Date().toISOString().slice(0, 10)}.png`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       });

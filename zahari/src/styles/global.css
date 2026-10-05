@@ -564,6 +564,84 @@ main {
   text-align: right;
   font-size: 0.69rem;
 }
+.coin-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+.coin-section {
+  display: block;
+}
+.coin-section .coin-grid {
+  margin-top: 18px;
+}
+.coin-grid .settings-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.coin-grid .settings-card h3 {
+  margin: 0;
+}
+.coin-grid .button {
+  width: 100%;
+  justify-content: center;
+}
+.news-panel {
+  max-width: 360px;
+  max-height: 42%;
+  overflow: auto;
+  margin: 0;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 12px 36px rgba(38, 33, 61, 0.07);
+}
+.world-stage {
+  position: relative;
+}
+.world-stage .news-panel {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  z-index: 5;
+}
+.news-panel h2 {
+  font-size: 1.05rem;
+}
+.news-panel h3 {
+  font-size: 1.2rem;
+}
+.news-panel p {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.news-panel a {
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+@media (max-width: 900px) {
+  .coin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .coin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 750px) {
+  .world-stage .news-panel {
+    position: relative;
+    top: auto;
+    right: auto;
+    max-width: none;
+    max-height: none;
+    margin-top: 12px;
+  }
+}
 .auth-layout {
   max-width: 1180px;
   margin: 0 auto;
