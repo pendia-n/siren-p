@@ -1,5 +1,6 @@
 // Run from the silvering Go module after the existing collector has written MySQL rows.
-// Required environment variables: ZAHARI_MYSQL_DSN, ZAHARI_INGEST_SECRET, ZAHARI_INGEST_URL.
+// Required environment variables: ZAHARI_MYSQL_DSN, ZAHARI_SOURCE_TIMEZONE,
+// ZAHARI_INGEST_SECRET, ZAHARI_INGEST_URL.
 package main
 
 import (
@@ -80,12 +81,56 @@ func saveState(path string, state map[string]int64) error {
 	}
 	return os.Rename(temporary, path)
 }
+
+// MySQL DATETIME contains wall-clock components but no timezone. The collector
+// writes time.Now() in the Mac's local zone, so interpret those components in
+// the configured source zone before sending an unambiguous UTC timestamp.
+func sourceTimestamp(stamp time.Time, location *time.Location) string {
+	local := time.Date(stamp.Year(), stamp.Month(), stamp.Day(), stamp.Hour(), stamp.Minute(), stamp.Second(), 0, location)
+	return local.UTC().Format(time.RFC3339)
+}
 func main() {
 	backfill := flag.Bool("backfill", false, "re-send the latest 900 rows per coin after a D1 restore")
+	watch := flag.Bool("watch", false, "continuously sync without a cron job")
+	every := flag.Duration("every", time.Minute, "time between watch-mode syncs")
 	flag.Parse()
-	dsn, secret, url := os.Getenv("ZAHARI_MYSQL_DSN"), os.Getenv("ZAHARI_INGEST_SECRET"), os.Getenv("ZAHARI_INGEST_URL")
-	if dsn == "" || secret == "" || url == "" {
-		fmt.Fprintln(os.Stderr, "Set ZAHARI_MYSQL_DSN, ZAHARI_INGEST_SECRET and ZAHARI_INGEST_URL.")
+	if *watch {
+		if *every < 30*time.Second {
+			fmt.Fprintln(os.Stderr, "-every must be at least 30 seconds.")
+			os.Exit(2)
+		}
+		first := true
+		for {
+			args := []string{os.Args[0]}
+			if first && *backfill {
+				args = append(args, "-backfill")
+			}
+			first = false
+			process, err := os.StartProcess(os.Args[0], args, &os.ProcAttr{
+				Env:   os.Environ(),
+				Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+			})
+			if err == nil {
+				var state *os.ProcessState
+				state, err = process.Wait()
+				if err == nil && !state.Success() {
+					err = fmt.Errorf("exit status %d", state.ExitCode())
+				}
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Zahari sync failed; retrying after %s: %v\n", *every, err)
+			}
+			time.Sleep(*every)
+		}
+	}
+	dsn, secret, url, zone := os.Getenv("ZAHARI_MYSQL_DSN"), os.Getenv("ZAHARI_INGEST_SECRET"), os.Getenv("ZAHARI_INGEST_URL"), os.Getenv("ZAHARI_SOURCE_TIMEZONE")
+	if dsn == "" || secret == "" || url == "" || zone == "" {
+		fmt.Fprintln(os.Stderr, "Set ZAHARI_MYSQL_DSN, ZAHARI_SOURCE_TIMEZONE, ZAHARI_INGEST_SECRET and ZAHARI_INGEST_URL.")
+		os.Exit(2)
+	}
+	location, err := time.LoadLocation(zone)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "ZAHARI_SOURCE_TIMEZONE must be an IANA timezone such as Asia/Hong_Kong.")
 		os.Exit(2)
 	}
 	if !strings.Contains(dsn, "parseTime=true") {
@@ -155,7 +200,7 @@ func main() {
 						rows.Close()
 						panic(err)
 					}
-					item.Table, item.Asset, item.Gap, item.Timestamp = table, asset, gap, stamp.UTC().Format(time.RFC3339)
+					item.Table, item.Asset, item.Gap, item.Timestamp = table, asset, gap, sourceTimestamp(stamp, location)
 					batch = append(batch, item)
 					if len(batch) == 100 {
 						if err = send(ctx, client, url, secret, batch); err != nil {

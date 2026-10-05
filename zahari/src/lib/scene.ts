@@ -56,7 +56,9 @@ export async function sceneFor(
   ).results;
   if (
     rows.length < 30 ||
-    now - Date.parse(rows[0].source_timestamp) / 1000 > 1800
+    !Number.isFinite(Date.parse(rows[0].source_timestamp)) ||
+    now - Date.parse(rows[0].source_timestamp) / 1000 > 1800 ||
+    Date.parse(rows[0].source_timestamp) / 1000 - now > 300
   )
     return cached ? { ...cached, stale: true } : null;
   const models = (

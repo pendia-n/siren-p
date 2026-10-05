@@ -91,6 +91,8 @@ export const POST: APIRoute = async ({ request }) => {
         row.id < 1 ||
         typeof row.timestamp !== "string" ||
         !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d/.test(row.timestamp) ||
+        !Number.isFinite(Date.parse(row.timestamp)) ||
+        Date.parse(row.timestamp) > Date.now() + 5 * 60_000 ||
         ![row.x, row.deviation, row.sigma, row.h, row.e, row.close].every(safe),
     )
   )
