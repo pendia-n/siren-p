@@ -23,3 +23,4 @@ CREATE TABLE market_rows (
   PRIMARY KEY(source_table,source_id)
 );
 CREATE INDEX market_rows_asset_gap_time ON market_rows(asset,source_table,gap,source_timestamp DESC);
+CREATE INDEX market_rows_asset_gap_id ON market_rows(asset,source_table,gap,source_id DESC);

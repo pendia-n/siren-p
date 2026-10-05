@@ -10,12 +10,14 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -79,9 +81,19 @@ func saveState(path string, state map[string]int64) error {
 	return os.Rename(temporary, path)
 }
 func main() {
+	backfill := flag.Bool("backfill", false, "re-send the latest 900 rows per coin after a D1 restore")
+	flag.Parse()
 	dsn, secret, url := os.Getenv("ZAHARI_MYSQL_DSN"), os.Getenv("ZAHARI_INGEST_SECRET"), os.Getenv("ZAHARI_INGEST_URL")
 	if dsn == "" || secret == "" || url == "" {
 		fmt.Fprintln(os.Stderr, "Set ZAHARI_MYSQL_DSN, ZAHARI_INGEST_SECRET and ZAHARI_INGEST_URL.")
+		os.Exit(2)
+	}
+	if !strings.Contains(dsn, "parseTime=true") {
+		fmt.Fprintln(os.Stderr, "ZAHARI_MYSQL_DSN must include parseTime=true; the DSN value will not be printed.")
+		os.Exit(2)
+	}
+	if !strings.HasPrefix(url, "https://") {
+		fmt.Fprintln(os.Stderr, "ZAHARI_INGEST_URL must use HTTPS.")
 		os.Exit(2)
 	}
 	configDir, err := os.UserConfigDir()
@@ -100,6 +112,9 @@ func main() {
 		}
 	} else if !os.IsNotExist(err) {
 		panic(err)
+	}
+	if *backfill {
+		state = map[string]int64{}
 	}
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {

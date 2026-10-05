@@ -115,6 +115,16 @@ export const POST: APIRoute = async ({ request }) => {
       ),
     ),
   );
+  for (const group of new Set(
+    rows.map((row) => `${row.table}:${row.asset}:${row.gap}`),
+  )) {
+    const [table, asset, gap] = group.split(":");
+    await bindings.DB.prepare(
+      "DELETE FROM market_rows WHERE source_table=? AND asset=? AND gap=? AND source_id<(SELECT MIN(source_id) FROM (SELECT source_id FROM market_rows WHERE source_table=? AND asset=? AND gap=? ORDER BY source_id DESC LIMIT 900))",
+    )
+      .bind(table, asset, gap, table, asset, gap)
+      .run();
+  }
   return Response.json(
     { accepted: rows.length },
     { headers: { "Cache-Control": "no-store" } },

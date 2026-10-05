@@ -1,6 +1,6 @@
 # Zahari
 
-Zahari is the working web preview of SirenP's coin-inspired visual worlds. The public scene uses the supplied SAMPLE.glb and three layered locations with 3D contact terrain and animated illustrated atmosphere; the signed-in studio shows the BTC Fortress. The app lets visitors orbit the artwork, change lighting and download a screenshot.
+Zahari is SirenP's coin-inspired visual world app. The public scene uses the supplied SAMPLE.glb and three layered locations with 3D contact terrain and animated illustrated atmosphere. A new account sees only that SAMPLE; coin GLBs require a paid Stripe subscription and a selected coin. Visitors can orbit the artwork, change lighting and download a screenshot.
 
 ## What works in this release
 
@@ -8,7 +8,7 @@ Zahari is the working web preview of SirenP's coin-inspired visual worlds. The p
 - Unique usernames and salted PBKDF2 password/passcode hashes in Cloudflare D1.
 - Revocable 56-day JWT sessions using Secure, HttpOnly, SameSite=Lax cookies. No authentication tokens in browser storage.
 - Password changes, recovery-code enable/replace/disable and global sign-out. Verified recovery is a short-lived, single-use grant.
-- Three.js loads the sample and BTC Fortress from a private R2 bucket through allowlisted Worker routes. The browser receives models to render them; a private bucket does not prevent viewers saving delivered model bytes.
+- Three.js loads the public sample and, for authorized members, selected coin worlds from a private R2 bucket through Worker routes. The browser receives authorized models to render them; a private bucket does not prevent those members saving delivered model bytes.
 - Dawn, daylight, dusk and night select from browser local time on each entry and remain manually switchable. The sample offers lowland, Pacific and sky locations with 3D terrain, animated grass/water/clouds and reduced-motion support.
 - Original Zahari SVG branding and local web fonts.
 
@@ -18,10 +18,10 @@ The intended experience is discovery and appreciation, not pressure to trade. Di
 
 ## Boundaries
 
-This release does not connect Vautim, news, sentiment, billing, prediction models, structural variants, all 28 assets or persistent saved scenes. Its pricing page lists the three user-specified monthly prices ($4.99 for one coin, $8.99 for five, $12.99 for all eight launch coins) without a free membership tier; checkout is not live. Lighting follows visitor local time on entry and is manually switchable. The supplied sample GLB has no authored animation clips; the scenery moves, but the model's geometry does not morph.
+The current code adds subscription Checkout, signed Stripe webhooks, coin selection, a read-only local MySQL-to-D1 uploader, ST/1m-driven authored model selection, and Tavily-backed news. It has passed local typecheck, build and unit tests, but remote migrations, secrets, Stripe Products, the feed, webhook destination and end-to-end payment tests are not yet verified. Until those are finished, it is not a live paid product. The app does not provide trading predictions or all 28 assets. Lighting follows visitor local time on entry and is manually switchable; paid locations are determined by market data, not users. The supplied sample GLB has no authored animation clips; the scenery moves, but the model's geometry does not morph.
 
 ## Infrastructure
 
-Code: `zahari/`. Worker: `zahari`. D1: `zahari-db`, bound as `DB`. R2: `zahari-models`, bound as `MODELS`. The bucket contains 45 coin GLBs across AAVE, BNB, BTC, ETH, LINK, SOL, UNI and XAUT, plus `SAMPLE.glb` at its root. Current public routes: `/media/SAMPLE.glb` and `/media/btc/BTC_FORTRESS_01.glb`.
+Code: `zahari/`. Worker: `zahari`. D1: `zahari-db`, bound as `DB`; no second D1 is needed. R2: `zahari-models`, bound as `MODELS`. The prior model upload reported 45 coin GLBs across AAVE, BNB, BTC, ETH, LINK, SOL, UNI and XAUT, plus `SAMPLE.glb` at its root; this turn did not reverify R2 remotely. The only public model route is `/media/SAMPLE.glb`; paid model routes verify subscription and coin selection.
 
-The generated `ZAHARI_JWT_SECRET` is saved only in ignored `zahari/.env` and the Cloudflare Worker secret. Never commit or display it. See the code README for local setup and verification commands.
+Never commit or display authentication, Stripe, Tavily or feed secrets. See the code README for the required variable names, local setup and verification commands.
