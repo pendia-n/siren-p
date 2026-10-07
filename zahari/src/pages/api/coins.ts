@@ -34,6 +34,11 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     )
       .bind(locals.user.id, asset)
       .run();
+    await bindings.DB.prepare(
+      "DELETE FROM scene_cache WHERE user_id=? AND asset=?",
+    )
+      .bind(locals.user.id, asset)
+      .run();
   } else {
     if (member.tier === "one") {
       const previous = await bindings.DB.prepare(

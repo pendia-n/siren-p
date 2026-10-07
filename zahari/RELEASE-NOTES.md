@@ -1,0 +1,14 @@
+# Forms, terrain and scheduled editions
+
+- Public `/jump`: 45 authored PNG previews, ascending numeric order per coin. Preview names map to GLB suffixes `_01.glb` through the asset's final number.
+- Public `/terrain`: customer-facing surroundings guide, no feature names or formulae.
+- Production scene source: `localtod_st_15m`, latest 2,200 rows per asset ordered by `shortid DESC`. Preserves uploader schema. It has no collection timestamp, so freshness cannot be asserted.
+- One/Five/Eight use 300/600/900 newest observations. Mean consecutive raw change is `(newest-oldest)/(N-1)`. Normalize separately for each asset, feature and N using the nearest-rank 90th percentile of absolute changes in preceding rolling N-row windows, excluding the current window, then clip to [-1,1]. Zero baseline gives 0 for no change, otherwise the sign. At least 30 historical windows are required. These are artistic mappings, not prediction validation.
+- Subject uses normalized deviation change; surroundings use normalized sigma change. Models use the requested 3/4/6/8 equal-width bands. Classes: BNB/BTC/ETH/LINK palace; XAUT boat; AAVE/SOL/UNI plane.
+- Cached scene intervals are 12/8/4 hours from the coin selection time. An open viewer checks its authenticated scene endpoint once per minute; a closed viewer catches up on its next visit. Cache expiry governs data calculation, not the polling rate.
+- News runs at 09:00,13:00,21:00 America/New_York, with DST-aware selection from an hourly UTC cron. Weekday 09/21 Tavily Helen, 13 Exa Helen; weekend 09/21 Tavily 2024, 13 Exa 2024. Firecrawl Helen is error-only fallback. No balance polling or OpenRouter calls.
+- Only DISTINCT selected assets of active, unexpired Five/Eight memberships are searched. Empty eligible set means zero searches. A claim per local date/time/asset prevents duplicate dispatch. A failed or interrupted claim is not automatically retried, preferring bounded spend over duplicate searches.
+- GET `/api/news/:asset` only reads cache and checks the requesting user's own membership, ownership and news entitlement. Never calls providers. News banners expire one hour after publication; duplicates do not reset visibility. URLs must be HTTPS, dates within 48h, and content must match the coin.
+- Tavily multi-source answers are not attributed to one arbitrary URL: use the selected source excerpt unless only one source was returned. Exa structured output must cite a returned source. Firecrawl uses page summaries where present. Decoders fail closed on unknown dates or malformed output.
+- Deploy migration 0008 before the Worker. It adds edition claims/summary fields and invalidates only old scene caches. Existing market data is untouched.
+- Verification must not call live news APIs or start localhost. Offline decoder fixtures, boundary tests, build checks and the deployed origin are permitted. No provider credentials or raw responses belong in logs or Git.

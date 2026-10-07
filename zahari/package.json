@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "astro dev",
     "check": "astro check",
-    "test": "tsx --test tests/unit.test.ts",
+    "test": "tsx --test tests/unit.test.ts tests/editions.test.ts",
     "test:api": "node tests/api.mjs",
     "setup:secret": "node scripts/setup-secret.mjs",
     "build": "astro build",

@@ -5,7 +5,8 @@
   "name": "zahari",
   "workers_dev": true,
   "preview_urls": false,
-  "main": "@astrojs/cloudflare/entrypoints/server",
+  "main": "./src/worker.ts",
+  "triggers": { "crons": ["0 * * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

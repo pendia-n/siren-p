@@ -18,12 +18,20 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
     return Response.json({ error: "Choose a membership." }, { status: 400 });
   const plan = PLANS[tier as Tier];
   if (!plan.product || !bindings.STRIPE_API_KEY) return back("configuring");
-  if ((tier === "five" || tier === "eight") && !bindings.TAVILY_API_KEY)
+  if (
+    (tier === "five" || tier === "eight") &&
+    ![
+      bindings.TAVILY_HELEN,
+      bindings.TAVILY_2024,
+      bindings.EXA_HELEN,
+      bindings.EXA_2024,
+    ].every(Boolean)
+  )
     return back("news");
   const feed = await bindings.DB.prepare(
-    "SELECT COUNT(DISTINCT asset) AS assets FROM market_rows WHERE source_table='st' AND gap='1m' AND source_timestamp>?",
+    "SELECT COUNT(*) AS assets FROM (SELECT asset FROM localtod_st_15m WHERE asset IN ('AAVE','BNB','BTC','ETH','LINK','SOL','UNI','XAUT') GROUP BY asset HAVING COUNT(*)>=?)",
   )
-    .bind(new Date(Date.now() - 30 * 60_000).toISOString())
+    .bind({ one: 330, five: 630, eight: 930 }[tier])
     .first<{ assets: number }>();
   if ((feed?.assets ?? 0) < 8) return back("data");
   try {

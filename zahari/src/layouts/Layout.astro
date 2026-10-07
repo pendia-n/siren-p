@@ -4,6 +4,7 @@ import "@fontsource/manrope/500.css";
 import "@fontsource/manrope/600.css";
 import "@fontsource/space-grotesk/500.css";
 import "../styles/global.css";
+import "../styles/field-guide.css";
 import Icon from "../components/Icon.astro";
 interface Props {
   title?: string;
@@ -26,6 +27,7 @@ const links = user
       { href: "/pricing", label: "Pricing", icon: "ticket" },
       { href: "/signin", label: "Sign in", icon: "user" },
     ];
+links.splice(1,0,{href:'/jump',label:'Forms',icon:'world'},{href:'/terrain',label:'Terrain',icon:'world'});
 ---
 
 <!doctype html>

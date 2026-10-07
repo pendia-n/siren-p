@@ -1,0 +1,20 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { ASSETS,MODEL_COUNTS,SUBJECTS } from '../lib/catalog';
+---
+<Layout title="Every form" description="Explore all eight Zahari subjects, from their most challenged form to their strongest.">
+ <section class="field-guide page-width">
+  <p class="eyebrow">THE ZAHARI FIELD GUIDE / FORMS</p>
+  <h1>One identity.<br/>A world of conditions.</h1>
+  <p class="lead">Live crypto data influences each world's condition. The subject stays recognisable; its appearance moves between the forms below. Read each sequence from worst to best.</p>
+  <nav class="coin-index" aria-label="Jump to a coin">{ASSETS.map(asset=><a href={`#${asset}`}>{asset} <span>↗</span></a>)}</nav>
+  {ASSETS.map(asset=><section class="form-sequence" id={asset} aria-label={`${asset} forms from worst to best`}>
+   <header><div><p class="eyebrow">{asset} / {MODEL_COUNTS[asset]} FORMS</p><h2>{SUBJECTS[asset]}</h2></div><span class="sequence-direction">Worst <span aria-hidden="true">⟶</span> Best</span></header>
+   <ol class="preview-strip">{Array.from({length:MODEL_COUNTS[asset]},(_,index)=>{
+    const number=String(index+1).padStart(2,'0');
+    return <li><a href={`/media/preview/${asset}${number}.png`} target="_blank" rel="noopener" aria-label={`Enlarge ${asset} form ${number}`}><img src={`/media/preview/${asset}${number}.png`} alt={`${asset} ${SUBJECTS[asset]}, form ${index+1} of ${MODEL_COUNTS[asset]}, ${index===0?'worst condition':index===MODEL_COUNTS[asset]-1?'best condition':'intermediate condition'}`} loading="lazy" width="420" height="320"/></a><div class="preview-caption"><strong>{number}</strong><span>{index===0?'Worst condition':index===MODEL_COUNTS[asset]-1?'Best condition':`Transition ${index+1}`}</span></div></li>;
+   })}</ol>
+  </section>)}
+  <p class="guide-note">These are artistic conditions, not buy or sell recommendations. <a href="/terrain">See how the surroundings change ↗</a></p>
+ </section>
+</Layout>

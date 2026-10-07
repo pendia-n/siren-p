@@ -1,0 +1,12 @@
+---
+import Layout from '../layouts/Layout.astro';
+const classes=[{name:'Palaces & fortresses',assets:'BNB · BTC · ETH · LINK',places:['Lowland','Buried lowland','Sea','Sky']},{name:'Boat',assets:'XAUT',places:['Sea','Lowland','Buried lowland','Sky']},{name:'Planes',assets:'AAVE · SOL · UNI',places:['Sky','Sea','Lowland','Buried lowland']}];
+const conditions=['Most settled','Settling','Unsettled','Most turbulent'];
+---
+<Layout title="Changing surroundings" description="Discover how market conditions move Zahari's palaces, boat and planes through land, sea and sky.">
+ <section class="field-guide page-width"><p class="eyebrow">THE ZAHARI FIELD GUIDE / TERRAIN</p><h1>The same world.<br/>Different ground beneath it.</h1><p class="lead">Live crypto data shapes the surroundings automatically. A place means something different for each subject: the sea is home to a boat, while a fortress belongs on solid ground. You can change the light and camera—not your world's data-driven location.</p>
+ <div class="terrain-scenes">{[{id:'lowland',name:'Lowland',text:'Short grass and firm ground. A natural home for a palace; a grounded moment for a plane.'},{id:'buried',name:'Buried lowland',text:'The same landscape, but the subject sits partly beneath the surface. It feels constrained rather than at home.'},{id:'sea',name:'Sea',text:'Quiet water and an open horizon. A boat is in its element; buildings and planes are displaced.'},{id:'sky',name:'Sky',text:'Clear clouds and open air. A plane can thrive here; a boat or fortress is far from familiar ground.'}].map(place=><article class={`terrain-card terrain-${place.id}`}><div class="terrain-illustration" aria-hidden="true"><span class="terrain-object">◇</span></div><h2>{place.name}</h2><p>{place.text}</p></article>)}</div>
+ <h2 class="terrain-heading">Read the setting through the subject.</h2><p>From settled to turbulent conditions, each subject follows its own journey. These are visual interpretations of changing market data, not a prediction of returns.</p>
+ <div class="terrain-paths">{classes.map(kind=><article><header><h3>{kind.name}</h3><p>{kind.assets}</p></header><ol>{kind.places.map((place,index)=><li><span>{conditions[index]}</span><strong>{place}</strong></li>)}</ol></article>)}</div>
+ <p class="guide-note">The subject's appearance and its surroundings respond independently, so a strong-looking subject can still sit in an unsettled environment. <a href="/jump">Explore the subject forms ↗</a></p></section>
+</Layout>

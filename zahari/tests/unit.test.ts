@@ -15,31 +15,6 @@ import {
   validPasscode,
 } from "../src/lib/validation";
 import { moodForLocalHour } from "../src/lib/scene-time";
-import { chooseModelIndex, choosePlacement } from "../src/lib/scene-rules";
-
-test("market scene uses x/deviation for authored variant and sigma for place", () => {
-  const rest = Array.from({ length: 9 }, (_, index) => ({
-    x: index / 10,
-    deviation: index / 100,
-    sigma: index / 1000,
-  }));
-  const high = [{ x: 1, deviation: 1, sigma: 1 }, ...rest];
-  const low = [{ x: -1, deviation: -1, sigma: 0 }, ...rest];
-  assert.equal(chooseModelIndex(high, 8), 7);
-  assert.equal(chooseModelIndex(low, 8), 0);
-  assert.deepEqual(choosePlacement(high, "palace"), {
-    location: "sky",
-    buried: false,
-  });
-  assert.deepEqual(choosePlacement(high, "plane"), {
-    location: "lowland",
-    buried: true,
-  });
-  assert.deepEqual(choosePlacement(low, "pontoon"), {
-    location: "pacific",
-    buried: false,
-  });
-});
 
 test("local-hour lighting boundaries", () => {
   for (const hour of [0, 5, 19, 23])

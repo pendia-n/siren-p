@@ -7,6 +7,7 @@ interface Props {
   location?: string;
   buried?: boolean;
   sceneAsset?: string;
+  news?: boolean;
 }
 const {
   sample = false,
@@ -15,6 +16,7 @@ const {
   location = "lowland",
   buried = false,
   sceneAsset,
+  news = false,
 } = Astro.props;
 ---
 
@@ -46,6 +48,12 @@ const {
     role="region"
     aria-label="3D artwork. Drag to orbit, scroll or pinch to zoom. Use arrow keys to pan."
   ></div>
+  {(sample || news) && <aside class="backdrop-banner" data-news-banner data-news-asset={sample ? undefined : sceneAsset} hidden={!sample} aria-live="polite">
+    <span class="banner-eyebrow">{sample ? 'WELCOME TO ZAHARI' : `${asset} / IN THE WORLD`}</span>
+    <h2 data-banner-title>{sample ? 'A little world. A changing story.' : ''}</h2>
+    <p data-banner-summary>{sample ? 'Welcome, Zahari is guide to all crypto escalation' : ''}</p>
+    <a data-banner-link href={sample ? '/jump' : undefined} target={sample ? undefined : '_blank'} rel="noopener noreferrer">{sample ? 'Explore every form ↗' : 'Read the source ↗'}</a>
+  </aside>}
   <div class="viewer-loading" data-loading role="status">
     <span class="loader-ring"></span>
     <p data-progress>Opening the artwork…</p>

@@ -12,6 +12,83 @@ function startViewer(root: HTMLElement) {
   const progress = root.querySelector<HTMLElement>("[data-progress]")!;
   const retry = root.querySelector<HTMLButtonElement>("[data-retry]")!;
   const sample = root.dataset.sample === "true";
+  const banner = root.querySelector<HTMLElement>("[data-news-banner]");
+  let bannerExpiry: number | undefined;
+  const refreshNews = async () => {
+    if (!banner?.dataset.newsAsset || document.hidden) return;
+    try {
+      const response = await fetch(`/api/news/${banner.dataset.newsAsset}`, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        banner.hidden = true;
+        return;
+      }
+      const { news } = (await response.json()) as {
+        news: {
+          title: string;
+          summary: string;
+          url: string;
+          highlight?: string;
+          expiresAt: number;
+        } | null;
+      };
+      window.clearTimeout(bannerExpiry);
+      if (!news || news.expiresAt * 1000 <= Date.now()) {
+        banner.hidden = true;
+        return;
+      }
+      const url = new URL(news.url);
+      if (url.protocol !== "https:") {
+        banner.hidden = true;
+        return;
+      }
+      banner.querySelector<HTMLElement>("[data-banner-title]")!.textContent =
+        news.title;
+      const summary = banner.querySelector<HTMLElement>(
+        "[data-banner-summary]",
+      )!;
+      summary.textContent = "";
+      const offset = news.highlight ? news.summary.indexOf(news.highlight) : -1;
+      if (offset >= 0 && news.highlight) {
+        summary.appendChild(
+          document.createTextNode(news.summary.slice(0, offset)),
+        );
+        const strong = document.createElement("strong");
+        strong.textContent = news.highlight;
+        summary.appendChild(strong);
+        summary.appendChild(
+          document.createTextNode(
+            news.summary.slice(offset + news.highlight.length),
+          ),
+        );
+      } else summary.textContent = news.summary;
+      banner.querySelector<HTMLAnchorElement>("[data-banner-link]")!.href =
+        url.href;
+      banner.hidden = false;
+      bannerExpiry = window.setTimeout(
+        () => {
+          banner.hidden = true;
+        },
+        news.expiresAt * 1000 - Date.now(),
+      );
+    } catch {
+      if (banner) banner.hidden = true;
+    }
+  };
+  if (banner?.dataset.newsAsset) {
+    void refreshNews();
+    const newsTimer = window.setInterval(refreshNews, 60000);
+    window.addEventListener(
+      "pagehide",
+      () => {
+        clearInterval(newsTimer);
+        clearTimeout(bannerExpiry);
+      },
+      { once: true },
+    );
+  }
   const initialPlace = (root.dataset.locationInitial || "lowland") as Place;
   const landscape = createLandscape(host, initialPlace);
   let renderer: THREE.WebGLRenderer;
@@ -319,6 +396,34 @@ function startViewer(root: HTMLElement) {
       if (!context) return;
       context.drawImage(landscape.canvas, 0, 0, capture.width, capture.height);
       context.drawImage(renderer.domElement, 0, 0);
+      if (banner && !banner.hidden) {
+        const scale = capture.width / root.clientWidth;
+        const rect = banner.getBoundingClientRect();
+        const parent = root.getBoundingClientRect();
+        const x = (rect.left - parent.left) * scale,
+          y = (rect.top - parent.top) * scale,
+          w = rect.width * scale;
+        context.fillStyle = "rgba(250,249,255,.94)";
+        context.fillRect(x, y, w, rect.height * scale);
+        context.fillStyle = "#26213d";
+        context.font = `${13 * scale}px sans-serif`;
+        const words = (banner.textContent ?? "")
+          .trim()
+          .replace(/\s+/g, " ")
+          .split(" ");
+        let line = "",
+          lineY = y + 22 * scale;
+        for (const word of words) {
+          if (context.measureText(line + word).width > w - 28 * scale) {
+            context.fillText(line, x + 14 * scale, lineY);
+            lineY += 19 * scale;
+            line = "";
+          }
+          line += word + " ";
+          if (lineY > y + (rect.height - 12) * scale) break;
+        }
+        context.fillText(line, x + 14 * scale, lineY);
+      }
       capture.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);

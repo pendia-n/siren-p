@@ -17,6 +17,11 @@ export interface Bindings {
   STRIPE_PRODUCT_FIVE_ID?: string;
   STRIPE_PRODUCT_EIGHT_ID?: string;
   TAVILY_API_KEY?: string;
+  TAVILY_HELEN?: string;
+  TAVILY_2024?: string;
+  EXA_HELEN?: string;
+  EXA_2024?: string;
+  FIRECRAWL_HELEN?: string;
   ZAHARI_INGEST_SECRET?: string;
 }
 export interface SessionUser {
