@@ -46,7 +46,7 @@ test('an interrupted checkout reuses its open Stripe session without a second cr
     require(name) {
       if (name.endsWith('/runtime')) return {bindings};
       if (name.endsWith('/product')) return {ASSETS: ['BTC'], MODEL_COUNTS: {BTC: 1}};
-      if (name.endsWith('/stripe')) return {PLANS: {one: {product: 'prod_fixture', cents: 499}}, stripe: async (path, form) => { calls.push({path, form}); return {status: 'open', url: 'https://checkout.stripe.com/c/pay/fixture'}; }};
+      if (name.endsWith('/stripe')) return {PLANS: {one: {name: 'Zahari One Coin', cents: 499}}, stripe: async (path, form) => { calls.push({path, form}); return {status: 'open', url: 'https://checkout.stripe.com/c/pay/fixture'}; }};
       throw new Error(`Unexpected import: ${name}`);
     },
   });
