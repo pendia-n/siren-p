@@ -17,7 +17,7 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   if (tier !== "one" && tier !== "five" && tier !== "eight")
     return Response.json({ error: "Choose a membership." }, { status: 400 });
   const plan = PLANS[tier as Tier];
-  if (!plan.product || !bindings.STRIPE_API_KEY) return back("configuring");
+  if (!bindings.STRIPE_API_KEY) return back("configuring");
   if (
     (tier === "five" || tier === "eight") &&
     ![
@@ -92,7 +92,7 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   const form = new URLSearchParams({
     mode: "subscription",
     "line_items[0][price_data][currency]": "usd",
-    "line_items[0][price_data][product]": plan.product,
+    "line_items[0][price_data][product_data][name]": plan.name,
     "line_items[0][price_data][unit_amount]": String(plan.cents),
     "line_items[0][price_data][recurring][interval]": "month",
     "line_items[0][quantity]": "1",

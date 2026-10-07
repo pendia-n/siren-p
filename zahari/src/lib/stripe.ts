@@ -3,11 +3,11 @@ import { bindings } from "./runtime";
 export type Tier = "one" | "five" | "eight";
 export const PLANS: Record<
   Tier,
-  { cents: number; product: string | undefined; slots: number }
+  { cents: number; name: string; slots: number }
 > = {
-  one: { cents: 499, product: bindings.STRIPE_PRODUCT_ONE_ID, slots: 1 },
-  five: { cents: 899, product: bindings.STRIPE_PRODUCT_FIVE_ID, slots: 5 },
-  eight: { cents: 1299, product: bindings.STRIPE_PRODUCT_EIGHT_ID, slots: 8 },
+  one: { cents: 499, name: "Zahari One Coin", slots: 1 },
+  five: { cents: 899, name: "Zahari Five Coins", slots: 5 },
+  eight: { cents: 1299, name: "Zahari Eight Coins", slots: 8 },
 };
 
 export async function stripe(path: string, form?: URLSearchParams) {

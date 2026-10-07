@@ -13,9 +13,6 @@ export interface Bindings {
   ZAHARI_JWT_SECRET: string;
   STRIPE_API_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
-  STRIPE_PRODUCT_ONE_ID?: string;
-  STRIPE_PRODUCT_FIVE_ID?: string;
-  STRIPE_PRODUCT_EIGHT_ID?: string;
   TAVILY_API_KEY?: string;
   TAVILY_HELEN?: string;
   TAVILY_2024?: string;
