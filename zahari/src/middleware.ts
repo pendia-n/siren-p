@@ -26,7 +26,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect("/signin", 303);
   if (guestOnly.has(path) && context.locals.user)
     return context.redirect("/studio", 303);
-  const response = await next();
+  const upstream = await next();
+  // Redirect responses have immutable headers. Preserve their status/location
+  // in a writable response before applying the shared security headers.
+  const response = new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: new Headers(upstream.headers),
+  });
   response.headers.set("Cache-Control", "no-store");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -39,7 +46,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     response.headers.set("Strict-Transport-Security", "max-age=31536000");
     response.headers.set(
       "Content-Security-Policy",
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com",
     );
   }
   return response;

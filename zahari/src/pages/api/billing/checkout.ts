@@ -71,7 +71,24 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   )
     .bind(locals.user.id, now + 3600, now)
     .first();
-  if (!claim) return back("pending");
+  if (!claim) {
+    // A previous redirect may have failed after Stripe created the session.
+    // Reuse that unpaid session rather than creating another subscription flow.
+    const pending = await bindings.DB.prepare(
+      "SELECT session_id FROM checkout_attempts WHERE user_id=?",
+    ).bind(locals.user.id).first<{ session_id: string | null }>();
+    if (pending?.session_id) {
+      try {
+        const checkout = await stripe(`checkout/sessions/${encodeURIComponent(pending.session_id)}`);
+        if (checkout.status === "open" && typeof checkout.url === "string" && checkout.url.startsWith("https://checkout.stripe.com/")) {
+          return Response.redirect(checkout.url, 303);
+        }
+      } catch {
+        return back("unavailable");
+      }
+    }
+    return back("pending");
+  }
   const form = new URLSearchParams({
     mode: "subscription",
     "line_items[0][price_data][currency]": "usd",
