@@ -1,7 +1,13 @@
 import { bindings } from "./runtime";
 import type { Tier } from "./stripe";
 import { MODEL_COUNTS, type Asset } from "./product";
-import { chooseModelIndex, choosePlacement } from "./scene-rules";
+import {
+  calibratedWindowChange,
+  modelIndexForScore,
+  placementForScore,
+  randomWindowOffset,
+} from "./scene-rules";
+import { WINDOW_CALIBRATION_SQL } from "./scene-window";
 import { PLAN_SECONDS, PLAN_WINDOWS, SCENE_CLASSES } from "./catalog";
 
 const cadence = PLAN_SECONDS;
@@ -15,9 +21,11 @@ type Cache = {
   expires_at: number;
 };
 type Row = {
+  id: number;
   shortid: number;
   deviation: number;
   sigma: number;
+  timestamp: string;
 };
 
 export async function sceneFor(
@@ -37,15 +45,31 @@ export async function sceneFor(
       ...cached,
       stale: false,
     };
-  const rows = (
-    await bindings.DB.prepare(
-      "SELECT shortid,deviation,sigma FROM localtod_st_15m WHERE asset=? ORDER BY shortid DESC LIMIT 2200",
-    )
-      .bind(asset)
-      .all<Row>()
-  ).results;
+  const count = await bindings.DB.prepare(
+    "SELECT COUNT(*) AS total FROM localtod_st_15m WHERE asset=?",
+  )
+    .bind(asset)
+    .first<{ total: number }>();
+  if (!count || count.total < window[tier]) return null;
+  const offset = randomWindowOffset(count.total, window[tier]);
+  const [selected, calibration] = await bindings.DB.batch([
+    bindings.DB.prepare(
+      "SELECT id,shortid,deviation,sigma,timestamp FROM localtod_st_15m WHERE asset=? ORDER BY timestamp ASC,id ASC LIMIT ? OFFSET ?",
+    ).bind(asset, window[tier], offset),
+    bindings.DB.prepare(WINDOW_CALIBRATION_SQL).bind(
+      window[tier],
+      asset,
+      offset,
+    ),
+  ]);
+  // The rules expect newest first; the selected SQL window is chronological.
+  const rows = (selected.results as Row[]).reverse();
+  const scale = calibration.results[0] as {
+    deviation_scale: number | null;
+    sigma_scale: number | null;
+  };
   if (
-    rows.length < window[tier] + 30 ||
+    rows.length !== window[tier] ||
     rows.some(
       (row) => !Number.isFinite(row.deviation) || !Number.isFinite(row.sigma),
     )
@@ -62,13 +86,20 @@ export async function sceneFor(
   if (models.length < MODEL_COUNTS[asset])
     return cached ? { ...cached, stale: true } : null;
   const latest = rows[0];
-  const index = chooseModelIndex(rows, MODEL_COUNTS[asset], window[tier]);
+  const index = modelIndexForScore(
+    calibratedWindowChange(rows, "deviation", scale.deviation_scale),
+    MODEL_COUNTS[asset],
+  );
   const numbered = models.find((item) =>
     item.key.endsWith(`_${String(index + 1).padStart(2, "0")}.glb`),
   );
   if (!numbered) return cached ? { ...cached, stale: true } : null;
   const model = numbered.key.split("/").at(-1)!;
-  const placement = choosePlacement(rows, SCENE_CLASSES[asset], window[tier]);
+  const placement = placementForScore(
+    calibratedWindowChange(rows, "sigma", scale.sigma_scale),
+    SCENE_CLASSES[asset],
+  );
+  const sourceRange = `${rows.at(-1)!.timestamp} through ${latest.timestamp}`;
   const selection = await bindings.DB.prepare(
     "SELECT selected_at FROM coin_selections WHERE user_id=? AND asset=?",
   )
@@ -87,7 +118,7 @@ export async function sceneFor(
       model,
       placement.location,
       Number(placement.buried),
-      `row:${latest.shortid}`,
+      sourceRange,
       now,
       expires,
     )
@@ -96,7 +127,7 @@ export async function sceneFor(
     model_name: model,
     location: placement.location,
     buried: Number(placement.buried),
-    source_timestamp: `row:${latest.shortid}`,
+    source_timestamp: sourceRange,
     computed_at: now,
     expires_at: expires,
     stale: false,

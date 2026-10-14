@@ -3,6 +3,40 @@ export type SceneLocation = "lowland" | "pacific" | "sky";
 export type ScenePlacement = { location: SceneLocation; buried: boolean };
 export type Observation = { deviation: number; sigma: number };
 
+export function randomWindowOffset(
+  total: number,
+  size: number,
+  random = Math.random,
+) {
+  if (
+    !Number.isSafeInteger(total) ||
+    !Number.isSafeInteger(size) ||
+    size < 2 ||
+    total < size
+  )
+    throw new Error("Insufficient observations");
+  const value = random();
+  if (!Number.isFinite(value) || value < 0 || value >= 1)
+    throw new Error("Invalid random value");
+  return Math.floor(value * (total - size + 1));
+}
+
+export function calibratedWindowChange(
+  rows: Observation[],
+  field: keyof Observation,
+  scale: number | null,
+) {
+  if (
+    rows.some((row) => !Number.isFinite(row[field])) ||
+    (scale !== null && (!Number.isFinite(scale) || scale < 0))
+  )
+    throw new Error("Invalid observations");
+  const change = meanChange(rows, field, rows.length);
+  return scale === null || scale === 0
+    ? Math.sign(change)
+    : Math.max(-1, Math.min(1, change / scale));
+}
+
 // Newest first. Mean consecutive change, not percentage change near zero.
 export function meanChange(
   rows: Observation[],

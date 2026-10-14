@@ -41,5 +41,5 @@ export const SCENE_CLASSES = {
 } as const;
 export const isAsset = (value: string): value is Asset =>
   ASSETS.includes(value as Asset);
-export const PLAN_WINDOWS = { one: 300, five: 600, eight: 900 } as const;
+export const PLAN_WINDOWS = { one: 1100, five: 2200, eight: 3300 } as const;
 export const PLAN_SECONDS = { one: 43200, five: 28800, eight: 14400 } as const;

@@ -31,7 +31,7 @@ export const POST: APIRoute = async ({ request, locals, url }) => {
   const feed = await bindings.DB.prepare(
     "SELECT COUNT(*) AS assets FROM (SELECT asset FROM localtod_st_15m WHERE asset IN ('AAVE','BNB','BTC','ETH','LINK','SOL','UNI','XAUT') GROUP BY asset HAVING COUNT(*)>=?)",
   )
-    .bind({ one: 330, five: 630, eight: 930 }[tier])
+    .bind({ one: 1100, five: 2200, eight: 3300 }[tier])
     .first<{ assets: number }>();
   if ((feed?.assets ?? 0) < 8) return back("data");
   try {

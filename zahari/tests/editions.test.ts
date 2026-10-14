@@ -1,10 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import { WINDOW_CALIBRATION_SQL } from "../src/lib/scene-window";
 import {
   modelIndexForScore,
   placementForScore,
   meanChange,
   normalizedChange,
+  randomWindowOffset,
+  calibratedWindowChange,
 } from "../src/lib/scene-rules";
 import {
   editionAt,
@@ -36,7 +40,58 @@ test("exact inclusive model boundaries, all authored counts", () => {
     45,
   );
   assert.deepEqual(PLAN_SECONDS, { one: 43200, five: 28800, eight: 14400 });
-  assert.deepEqual(PLAN_WINDOWS, { one: 300, five: 600, eight: 900 });
+  assert.deepEqual(PLAN_WINDOWS, { one: 1100, five: 2200, eight: 3300 });
+});
+test("random windows include first and last complete position and reject undersized data", () => {
+  assert.equal(
+    randomWindowOffset(4000, 3300, () => 0),
+    0,
+  );
+  assert.equal(
+    randomWindowOffset(4000, 3300, () => 0.999999),
+    700,
+  );
+  assert.equal(
+    randomWindowOffset(3300, 3300, () => 0.5),
+    0,
+  );
+  assert.throws(() => randomWindowOffset(3299, 3300));
+  const rows = [
+    { deviation: 0.8, sigma: 0.2 },
+    { deviation: 0.4, sigma: 0.4 },
+  ];
+  assert.equal(calibratedWindowChange(rows, "deviation", 0.8), 0.5);
+  assert.equal(calibratedWindowChange(rows, "sigma", null), -1);
+});
+test("SQL windows use chronological positions across serial gaps and calibrate only the same asset", () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec(
+      "CREATE TABLE localtod_st_15m(id INTEGER PRIMARY KEY,asset TEXT,timestamp TEXT,deviation REAL,sigma REAL)",
+    );
+    const insert = db.prepare("INSERT INTO localtod_st_15m VALUES(?,?,?,?,?)");
+    [0, 0.2, 0.4, 0.6, 0.8].forEach((d, i) =>
+      insert.run(10 + i * 10, "BTC", `2026-09-26 00:00:0${i}`, d, 1 - d),
+    );
+    insert.run(99, "ETH", "2026-09-26 00:00:00", 100, 100);
+    const rows = db
+      .prepare(
+        "SELECT id FROM localtod_st_15m WHERE asset=? ORDER BY timestamp,id LIMIT ? OFFSET ?",
+      )
+      .all("BTC", 3, 2);
+    assert.deepEqual(
+      rows.map((r) => r.id),
+      [30, 40, 50],
+    );
+    const result = db.prepare(WINDOW_CALIBRATION_SQL).get(3, "BTC", 1)!;
+    assert.ok(Math.abs(Number(result.deviation_scale) - 0.2) < 1e-12);
+    assert.ok(Math.abs(Number(result.sigma_scale) - 0.2) < 1e-12);
+    const exact = db.prepare(WINDOW_CALIBRATION_SQL).get(5, "BTC", 0)!;
+    assert.equal(exact.deviation_scale, null);
+    assert.equal(exact.sigma_scale, null);
+  } finally {
+    db.close();
+  }
 });
 test("location boundaries implement all three classes", () => {
   const expected = {

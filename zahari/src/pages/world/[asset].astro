@@ -12,7 +12,7 @@ const scene=member?await sceneFor(Astro.locals.user.id,asset,member.tier,member.
  <section class="studio page-width">
   <div class="page-heading"><div><p class="eyebrow">YOUR COIN WORLD</p><h1>{asset}<span class="heading-dot">.</span></h1></div><a class="button secondary" href="/studio">All worlds</a></div>
   {scene?<Viewer asset={asset} modelUrl={`/api/model/${asset}/${encodeURIComponent(scene.model_name)}`} location={scene.location} buried={Boolean(scene.buried)} sceneAsset={asset} news={member?.tier!=="one"}/>:<p>Waiting for this coin's market data and artwork. No scene is invented while the feed is unavailable.</p>}
-  {scene&&<p class="data-note">{scene.stale?"Showing the last available scene.":"Your scene reflects the latest available market observations."} Next scheduled refresh: {new Date(scene.expires_at*1000).toLocaleString("en-US",{timeZone:"America/New_York"})} New York time. The source feed does not include collection timestamps; this is not a live-price freshness guarantee.</p>}
+  {scene&&<p class="data-note">{scene.stale?"Showing the last available scene.":"Your scene draws from a randomly selected period in the uploaded market history."} Observations: {scene.source_timestamp}. Next scheduled refresh: {new Date(scene.expires_at*1000).toLocaleString("en-US",{timeZone:"America/New_York"})} New York time.</p>}
   <p class="data-note">This artwork is not a price forecast. <a href="/jump">Explore every form</a> · <a href="/terrain">Understand the surroundings</a></p>
  </section>
 </Layout>
