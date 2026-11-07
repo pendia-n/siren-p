@@ -1,6 +1,6 @@
 # Zahari — Plain-Language Product Summary
 
-Updated: 3 November 2026
+Updated: 8 November 2026
 
 Website: https://zahari.ink
 
@@ -81,9 +81,11 @@ The free sample is separate from these memberships. It is not a free tier that u
 
 The Five and Eight plans have the same news edition times: **9am, 1pm, and 9pm New York time**, including the local daylight-saving change.
 
-For a selected coin, a qualifying story appears as a short summary in a backdrop banner, with a source link opening in a new tab. A banner lasts up to one hour. It can remain empty when no qualifying new story is available.
+For a selected coin, a qualifying story appears as a short summary in a backdrop banner, with a source link opening in a new tab. Stories stay visible until a new qualifying result replaces them. Duplicate results, empty searches, or provider failures do not remove the previous story. Publication dates stay visible; retained news is not labelled as today's news.
 
-Searches cover only coins selected by eligible paid members. Everyone choosing BTC shares its edition. Opening a viewer adds no searches; no eligible paid selections means no searches.
+Daily searches cover only coins selected by active, unexpired Five and Eight members. Everyone choosing BTC shares its edition. Separately, every Monday at 9am New York time, a public sweep covers all eight launch coins, including when there are no paid members, using a seven-day lookback for coins without daily coverage. A coin shared by both schedules is searched once, not twice. Opening a page or viewer never starts a search.
+
+Visitors can read dated headlines and short excerpts without signing in, on the home page and public News page. Signed-in unpaid accounts see previews too, with a membership invitation. Each coin's preview explains what subscribing unlocks before sending a visitor to sign in or register, and preserves that coin through authentication. One includes 3D worlds without full news; Five and Eight include full summaries for selected coins. Source links still open the original article directly.
 
 News supplies context beside the artwork. It does not currently choose or reshape the 3D subject.
 

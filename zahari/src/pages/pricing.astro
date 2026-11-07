@@ -1,5 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { isAsset } from "../lib/catalog";
+const coin = Astro.url.searchParams.get("coin") ?? "";
 const checkoutMessage: Record<string, string> = {
   configuring: "Checkout is still being configured. No payment was taken.",
   news: "The news service is not ready. No payment was taken.",
@@ -31,6 +33,13 @@ const notice = checkoutMessage[Astro.url.searchParams.get("checkout") ?? ""];
         {notice}
       </p>
     )}
+    {isAsset(coin) && (
+      <p class="news-invitation">
+        Continue exploring {coin}: all memberships unlock 3D coin worlds. Choose
+        Five or Eight for full news summaries as well. After payment, choose{" "}
+        {coin} in Explore.
+      </p>
+    )}
     <div class="plan-grid">
       <article class="plan-card">
         <span class="pill">ONE COIN</span>
@@ -42,7 +51,7 @@ const notice = checkoutMessage[Astro.url.searchParams.get("checkout") ?? ""];
         <ul class="feature-list">
           <li>Choose one launch coin</li>
           <li>Your world refreshes every 12 hours</li>
-          <li>No news stories in this plan</li>
+          <li>Public news excerpts; full summaries not included</li>
           <li>Keep your chosen coin until your next renewal</li>
           <li>Change the light, orbit and save a view</li>
         </ul>
@@ -90,9 +99,12 @@ const notice = checkoutMessage[Astro.url.searchParams.get("checkout") ?? ""];
     <p class="pricing-footnote">
       The public sample is separate from membership. Sign in before subscribing.
       A successful payment unlocks selection of your coin worlds. Market-driven
-      changes and news require the data feed to be connected. A news story
-      appears for up to one hour after it is found; if there is no relevant
-      recent story, the panel stays empty.
+      scenes draw from uploaded market history. Published news stays visible
+      until a new qualifying result replaces it, including when a search finds
+      nothing new or fails. Public previews cover all eight coins weekly on
+      Monday at 9am New York time, looking back seven days. Daily editions check
+      only coins selected by active Five and Eight members. Publication dates
+      remain visible; a retained story is not necessarily today’s news.
     </p>
   </section>
 </Layout>

@@ -1,5 +1,6 @@
 import type { Asset } from "./catalog";
 export type Provider = "tavily" | "exa" | "firecrawl";
+export type SearchRange = "day" | "week";
 export type NewsSecrets = {
   TAVILY_HELEN?: string;
   TAVILY_2024?: string;
@@ -69,6 +70,7 @@ export function editionAt(date: Date) {
     key,
     hour,
     weekend,
+    weekly: parts.weekday === "Mon" && hour === 9,
   };
 }
 export const queryFor = (asset: Asset) =>
@@ -104,6 +106,7 @@ function story(
   item: any,
   provider: Provider,
   now: Date,
+  range: SearchRange,
 ): Story | null {
   if (!item || typeof item !== "object") return null;
   const title = cleanText(item.title, 110),
@@ -125,7 +128,7 @@ function story(
     !terms[asset].test(`${title} ${summary}`) ||
     !Number.isFinite(published) ||
     published > now.getTime() + 300000 ||
-    published < now.getTime() - 48 * 3600000
+    published < now.getTime() - (range === "week" ? 7 * 24 : 48) * 3600000
   )
     return null;
   const candidate = cleanText(
@@ -145,6 +148,7 @@ export function decodeTavily(
   raw: any,
   asset: Asset,
   now = new Date(),
+  range: SearchRange = "day",
 ): Story | null {
   const results = Array.isArray(raw?.results) ? raw.results : [];
   // A multi-source answer cannot safely be attributed to the first URL. Prefer that
@@ -159,6 +163,7 @@ export function decodeTavily(
       },
       "tavily",
       now,
+      range,
     );
     if (found) return found;
   }
@@ -168,6 +173,7 @@ export function decodeExa(
   raw: any,
   asset: Asset,
   now = new Date(),
+  range: SearchRange = "day",
 ): Story | null {
   const results = Array.isArray(raw?.results) ? raw.results : [];
   let output = raw?.output?.content;
@@ -188,6 +194,7 @@ export function decodeExa(
         { ...output, publishedAt: source.publishedDate },
         "exa",
         now,
+        range,
       );
       if (found) return found;
     }
@@ -201,6 +208,7 @@ export function decodeExa(
       },
       "exa",
       now,
+      range,
     );
     if (found) return found;
   }
@@ -210,6 +218,7 @@ export function decodeFirecrawl(
   raw: any,
   asset: Asset,
   now = new Date(),
+  range: SearchRange = "day",
 ): Story | null {
   if (raw?.success === false) return null;
   const data = raw?.data ?? raw;
@@ -233,6 +242,7 @@ export function decodeFirecrawl(
       },
       "firecrawl",
       now,
+      range,
     );
     if (found) return found;
   }
@@ -261,12 +271,13 @@ export async function searchTavilyCoin(
   asset: Asset,
   key: string | undefined,
   now = new Date(),
+  range: SearchRange = "day",
 ) {
   const raw = await post("https://api.tavily.com/search", key, {
     query: queryFor(asset),
     topic: "news",
     search_depth: "advanced",
-    time_range: "day",
+    time_range: range,
     max_results: 5,
     include_answer: "advanced",
     include_published_date: true,
@@ -275,12 +286,13 @@ export async function searchTavilyCoin(
     include_usage: true,
     auto_parameters: false,
   });
-  return decodeTavily(raw, asset, now);
+  return decodeTavily(raw, asset, now, range);
 }
 export async function searchExaCoin(
   asset: Asset,
   key: string | undefined,
   now = new Date(),
+  range: SearchRange = "day",
 ) {
   const raw = await post(
     "https://api.exa.ai/search",
@@ -290,7 +302,9 @@ export async function searchExaCoin(
       type: "deep",
       category: "news",
       numResults: 10,
-      startPublishedDate: new Date(now.getTime() - 86400000).toISOString(),
+      startPublishedDate: new Date(
+        now.getTime() - (range === "week" ? 7 : 1) * 86400000,
+      ).toISOString(),
       contents: { highlights: true },
       systemPrompt:
         "Select ONE material new event about the requested asset. Write English: short factual title, summary of at most two sentences and 60 words, optional highlight copied verbatim from summary, and the exact supporting source URL. Do not invent facts or infer price direction.",
@@ -307,23 +321,24 @@ export async function searchExaCoin(
     },
     true,
   );
-  return decodeExa(raw, asset, now);
+  return decodeExa(raw, asset, now, range);
 }
 export async function searchFirecrawlCoin(
   asset: Asset,
   key: string | undefined,
   now = new Date(),
+  range: SearchRange = "day",
 ) {
   const raw = await post("https://api.firecrawl.dev/v2/search", key, {
     query: queryFor(asset),
     sources: ["web"],
     limit: 3,
-    tbs: "qdr:d",
+    tbs: range === "week" ? "qdr:w" : "qdr:d",
     scrapeOptions: {
       onlyMainContent: true,
       maxAge: 3600000,
       formats: ["summary"],
     },
   });
-  return decodeFirecrawl(raw, asset, now);
+  return decodeFirecrawl(raw, asset, now, range);
 }

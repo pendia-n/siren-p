@@ -1,0 +1,126 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { bindings } from "../../lib/runtime";
+import { isAsset, membership, ownsAsset } from "../../lib/product";
+import {
+  NEWS_COLUMNS,
+  newsAccess,
+  newsPath,
+  newsPreview,
+  type CachedNews,
+} from "../../lib/news-preview";
+const asset = Astro.params.asset?.toUpperCase() ?? "";
+if (!isAsset(asset)) return Astro.redirect("/news", 303);
+const user = Astro.locals.user;
+const member = user ? await membership(user.id) : null;
+const eligible = newsAccess(member);
+const selected = Boolean(user && eligible && (await ownsAsset(user.id, asset)));
+const row = await bindings.DB.prepare(
+  `SELECT ${NEWS_COLUMNS} FROM news_cache WHERE asset=?`,
+)
+  .bind(asset)
+  .first<CachedNews>();
+const story =
+  row?.title && row.summary && row.source_url
+    ? newsPreview(row, selected)
+    : null;
+const next = newsPath(asset);
+---
+
+<Layout title={`${asset} news & world`}>
+  <section class="news-section page-width news-detail">
+    <a class="text-link" href="/news">
+      ← All coin news
+    </a>
+    <p class="eyebrow">
+      {asset} / {selected ? "YOUR NEWS EDITION" : "NEWS PREVIEW"}
+    </p>
+    <h1>{story?.title ?? `${asset}: a world worth exploring`}</h1>
+    <p class="lead">
+      {story?.summary ??
+        "No published story is available yet. The next scheduled search will look for a relevant source; we do not invent an update."}
+    </p>
+    {story && (
+      <p class="data-note">
+        Published{" "}
+        <time datetime={story.publishedAt}>
+          {new Date(story.publishedAt).toLocaleDateString("en-US", {
+            timeZone: "America/New_York",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </time>{" "}
+        ·{" "}
+        <a href={story.url} target="_blank" rel="noopener noreferrer">
+          Read the original source ↗
+        </a>
+      </p>
+    )}
+    <aside class="news-invitation" aria-labelledby="unlock-heading">
+      <h2 id="unlock-heading">
+        {selected
+          ? `Step into your ${asset} world.`
+          : `Not just ${asset} news. A world to explore.`}
+      </h2>
+      {selected ? (
+        <>
+          <p>
+            Your membership includes the full summary and this coin’s
+            interactive 3D scene. Market history shapes its appearance and
+            surroundings; news adds a separate layer of context.
+          </p>
+          <a class="button" href={`/world/${asset.toLowerCase()}`}>
+            Visit your {asset} world
+          </a>
+        </>
+      ) : eligible ? (
+        <>
+          <p>
+            Your plan includes full news and 3D worlds for your selected coins.
+            Choose {asset} in Explore using an available slot; if your
+            collection is full, remove another coin first.
+          </p>
+          <a class="button" href={`/studio#${asset.toLowerCase()}`}>
+            Choose {asset} in Explore
+          </a>
+        </>
+      ) : (
+        <>
+          <p>
+            {user
+              ? "Your account can read this free excerpt."
+              : "Sign in or create an account to continue; registration alone does not unlock paid content."}{" "}
+            Choose a membership for changing, market-data-driven 3D worlds. Five
+            ($8.99/month) and Eight ($12.99/month) also include full news
+            summaries. One ($4.99/month) includes one 3D coin world without full
+            news.
+          </p>
+          <a
+            class="button"
+            href={
+              user
+                ? `/pricing?coin=${asset}`
+                : `/signin?next=${encodeURIComponent(next)}`
+            }
+          >
+            {user ? "View membership plans" : "Sign in & continue"}
+          </a>
+          {!user && (
+            <a
+              class="text-link"
+              href={`/signup?next=${encodeURIComponent(next)}`}
+            >
+              Create an account
+            </a>
+          )}
+        </>
+      )}
+      <p>
+        <a class="text-link" href="/news">
+          Continue browsing free previews
+        </a>
+      </p>
+    </aside>
+  </section>
+</Layout>

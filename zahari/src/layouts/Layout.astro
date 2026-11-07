@@ -27,7 +27,13 @@ const links = user
       { href: "/pricing", label: "Pricing", icon: "ticket" },
       { href: "/signin", label: "Sign in", icon: "user" },
     ];
-links.splice(1,0,{href:'/jump',label:'Forms',icon:'world'},{href:'/terrain',label:'Terrain',icon:'world'});
+links.splice(
+  1,
+  0,
+  { href: "/jump", label: "Forms", icon: "world" },
+  { href: "/terrain", label: "Terrain", icon: "world" },
+);
+links.splice(1, 0, { href: "/news", label: "News", icon: "world" });
 ---
 
 <!doctype html>

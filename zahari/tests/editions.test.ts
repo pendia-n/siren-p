@@ -17,6 +17,20 @@ import {
   decodeFirecrawl,
 } from "../src/lib/news";
 import { PLAN_SECONDS, PLAN_WINDOWS, MODEL_COUNTS } from "../src/lib/catalog";
+import { ASSETS } from "../src/lib/catalog";
+import { runNewsEdition } from "../src/lib/news-jobs";
+import {
+  newsAccess,
+  newsPreview,
+  newsReturnPath,
+  type CachedNews,
+} from "../src/lib/news-preview";
+import {
+  searchTavilyCoin,
+  searchExaCoin,
+  searchFirecrawlCoin,
+} from "../src/lib/news";
+import type { Bindings } from "../src/lib/auth";
 test("exact inclusive model boundaries, all authored counts", () => {
   const cases: Record<number, number[]> = {
     3: [-1, -1 / 3, 1 / 3],
@@ -41,6 +55,299 @@ test("exact inclusive model boundaries, all authored counts", () => {
   );
   assert.deepEqual(PLAN_SECONDS, { one: 43200, five: 28800, eight: 14400 });
   assert.deepEqual(PLAN_WINDOWS, { one: 1100, five: 2200, eight: 3300 });
+});
+
+function newsFixture() {
+  const db = new DatabaseSync(":memory:");
+  db.exec(`
+    CREATE TABLE memberships(user_id TEXT,tier TEXT,status TEXT,current_period_end INTEGER);
+    CREATE TABLE coin_selections(user_id TEXT,asset TEXT);
+    CREATE TABLE news_editions(edition TEXT,asset TEXT,provider TEXT,created_at INTEGER,state TEXT DEFAULT 'running',PRIMARY KEY(edition,asset));
+    CREATE TABLE news_cache(asset TEXT PRIMARY KEY,title TEXT,summary TEXT,source_url TEXT,published_at TEXT,fetched_at INTEGER,visible_until INTEGER,next_search_at INTEGER,highlight TEXT,provider TEXT);
+  `);
+  const env = {
+    DB: {
+      prepare(sql: string) {
+        let args: any[] = [];
+        const statement = {
+          bind(...values: any[]) {
+            args = values;
+            return statement;
+          },
+          async all() {
+            return { results: db.prepare(sql).all(...args) };
+          },
+          async first() {
+            return db.prepare(sql).get(...args) ?? null;
+          },
+          async run() {
+            return db.prepare(sql).run(...args);
+          },
+        };
+        return statement;
+      },
+    },
+    TAVILY_HELEN: "fixture-weekday",
+    TAVILY_2024: "fixture-weekend",
+    EXA_HELEN: "fixture-noon-weekday",
+    EXA_2024: "fixture-noon-weekend",
+    FIRECRAWL_HELEN: "fixture-backup",
+  } as unknown as Bindings;
+  const calls: {
+    provider: string;
+    asset: string;
+    key?: string;
+    range?: string;
+  }[] = [];
+  let mode: "new" | "empty" | "failure" | "backup" = "new";
+  const response =
+    (provider: string) =>
+    async (
+      asset: any,
+      key: string | undefined,
+      date = new Date(),
+      range: "day" | "week" = "day",
+    ) => {
+      calls.push({ provider, asset, key, range });
+      if (mode === "failure" || (mode === "backup" && provider !== "firecrawl"))
+        throw new Error("Fixture failure");
+      return mode === "empty"
+        ? null
+        : {
+            title: `${asset} material update`,
+            summary: `${asset} has a source-backed update.`,
+            url: `https://example.org/${asset}`,
+            publishedAt: date.toISOString(),
+            highlight: "",
+            provider: provider as "tavily" | "exa" | "firecrawl",
+          };
+    };
+  const searches = {
+    searchTavilyCoin: response("tavily"),
+    searchExaCoin: response("exa"),
+    searchFirecrawlCoin: response("firecrawl"),
+  };
+  function member(
+    user: string,
+    tier: string,
+    assets: string[],
+    status = "active",
+    expires = 9999999999,
+  ) {
+    db.prepare("INSERT INTO memberships VALUES(?,?,?,?)").run(
+      user,
+      tier,
+      status,
+      expires,
+    );
+    for (const asset of assets)
+      db.prepare("INSERT INTO coin_selections VALUES(?,?)").run(user, asset);
+  }
+  return {
+    db,
+    env,
+    calls,
+    searches,
+    member,
+    mode: (value: typeof mode) => {
+      mode = value;
+    },
+  };
+}
+
+test("no paid users: only Monday 9am searches all eight, seven-day range, once per coin", async () => {
+  const f = newsFixture();
+  try {
+    for (const date of [
+      "2026-11-08T14:00:00Z",
+      "2026-11-09T18:00:00Z",
+      "2026-11-10T02:00:00Z",
+    ])
+      await runNewsEdition(f.env, new Date(date), f.searches);
+    assert.equal(f.calls.length, 0);
+    const monday = new Date("2026-11-09T14:00:00Z");
+    await runNewsEdition(f.env, monday, f.searches);
+    assert.deepEqual(
+      f.calls.map((c) => c.asset),
+      [...ASSETS],
+    );
+    assert.ok(
+      f.calls.every(
+        (c) =>
+          c.range === "week" &&
+          c.provider === "tavily" &&
+          c.key === "fixture-weekday",
+      ),
+    );
+    await runNewsEdition(f.env, monday, f.searches);
+    assert.equal(f.calls.length, 8);
+    assert.equal(editionAt(new Date("2026-07-06T13:00:00Z"))?.weekly, true);
+    assert.equal(editionAt(new Date("2026-07-06T17:00:00Z"))?.weekly, false);
+  } finally {
+    f.db.close();
+  }
+});
+
+test("paid searches deduplicate selected coins, skip inactive/expired/One, preserve provider keys", async () => {
+  const f = newsFixture();
+  try {
+    f.member("a", "five", ["BTC", "SOL"]);
+    f.member("b", "eight", ["BTC"]);
+    f.member("c", "five", ["LINK"], "canceled");
+    f.member("d", "eight", ["ETH"], "active", 1);
+    f.member("e", "one", ["UNI"]);
+    for (const date of [
+      "2026-11-10T14:00:00Z",
+      "2026-11-10T18:00:00Z",
+      "2026-11-11T02:00:00Z",
+      "2026-11-14T14:00:00Z",
+      "2026-11-14T18:00:00Z",
+    ])
+      await runNewsEdition(f.env, new Date(date), f.searches);
+    assert.equal(f.calls.length, 10);
+    assert.ok(
+      f.calls.every(
+        (c) => ["BTC", "SOL"].includes(c.asset) && c.range === "day",
+      ),
+    );
+    assert.deepEqual(
+      f.calls.filter((c) => c.asset === "BTC").map((c) => c.key),
+      [
+        "fixture-weekday",
+        "fixture-noon-weekday",
+        "fixture-weekday",
+        "fixture-weekend",
+        "fixture-noon-weekend",
+      ],
+    );
+    f.calls.length = 0;
+    await runNewsEdition(f.env, new Date("2026-11-16T14:00:00Z"), f.searches);
+    assert.equal(f.calls.length, 8);
+    assert.equal(f.calls.find((c) => c.asset === "BTC")?.range, "day");
+    assert.equal(f.calls.find((c) => c.asset === "UNI")?.range, "week");
+  } finally {
+    f.db.close();
+  }
+});
+
+test("stories survive duplicate, empty and failed editions; backup only on a thrown failure", async () => {
+  const f = newsFixture();
+  try {
+    f.member("a", "five", ["BTC"]);
+    await runNewsEdition(f.env, new Date("2026-11-10T14:00:00Z"), f.searches);
+    const before = f.db
+      .prepare("SELECT * FROM news_cache WHERE asset='BTC'")
+      .get()!;
+    assert.equal(before.visible_until, 0);
+    await runNewsEdition(f.env, new Date("2026-11-10T18:00:00Z"), f.searches);
+    f.mode("empty");
+    await runNewsEdition(f.env, new Date("2026-11-11T02:00:00Z"), f.searches);
+    f.mode("failure");
+    await runNewsEdition(f.env, new Date("2026-11-11T14:00:00Z"), f.searches);
+    assert.deepEqual(
+      f.db.prepare("SELECT * FROM news_cache WHERE asset='BTC'").get(),
+      before,
+    );
+    assert.equal(f.calls.filter((c) => c.provider === "firecrawl").length, 1);
+    assert.deepEqual(
+      f.db
+        .prepare("SELECT state FROM news_editions ORDER BY created_at")
+        .all()
+        .map((r) => r.state),
+      ["published", "duplicate", "empty", "failed"],
+    );
+    f.mode("backup");
+    await runNewsEdition(f.env, new Date("2026-11-11T18:00:00Z"), f.searches);
+    assert.equal(f.calls.at(-1)?.key, "fixture-backup");
+  } finally {
+    f.db.close();
+  }
+});
+
+test("public preview is truncated, full access checks expiry, return destination cannot escape", () => {
+  const row = {
+    title: "BTC news",
+    summary: "Bitcoin context. ".repeat(28),
+    source_url: "https://example.org/btc",
+    published_at: "2026-11-01T12:00:00Z",
+    fetched_at: 1,
+    highlight: "Bitcoin context",
+  } as CachedNews;
+  assert.ok(newsPreview(row).summary.length <= 160);
+  assert.equal(newsPreview(row).highlight, "");
+  assert.equal(newsPreview(row).preview, true);
+  assert.equal(newsPreview(row, true).preview, false);
+  assert.ok(!("expiresAt" in newsPreview(row)));
+  assert.equal(newsAccess(null, 100), false);
+  for (const tier of ["five", "eight"]) {
+    assert.equal(
+      newsAccess({ tier, status: "active", current_period_end: 101 }, 100),
+      true,
+    );
+    assert.equal(
+      newsAccess({ tier, status: "active", current_period_end: 100 }, 100),
+      false,
+    );
+  }
+  assert.equal(
+    newsAccess({ tier: "one", status: "active", current_period_end: 101 }, 100),
+    false,
+  );
+  assert.equal(newsReturnPath("/news/btc"), "/news/btc");
+  for (const bad of [
+    "https://evil.test",
+    "//evil.test",
+    "/news/btc?next=//evil.test",
+    "/news/unknown",
+    "/news/../profile",
+    null,
+  ])
+    assert.equal(newsReturnPath(bad), null);
+});
+
+test("weekly decoder accepts up to seven days, rejects older sources", () => {
+  const date = new Date("2026-11-09T14:00:00Z");
+  const item = {
+    title: "Bitcoin adoption update",
+    content: "Bitcoin has a material adoption update.",
+    url: "https://example.org/btc",
+    published_date: "2026-11-04T14:00:00Z",
+  };
+  assert.equal(decodeTavily({ results: [item] }, "BTC", date), null);
+  assert.ok(decodeTavily({ results: [item] }, "BTC", date, "week"));
+  assert.equal(
+    decodeTavily(
+      { results: [{ ...item, published_date: "2026-11-01T14:00:00Z" }] },
+      "BTC",
+      date,
+      "week",
+    ),
+    null,
+  );
+});
+
+test("provider request ranges use week filters without live network requests", async (t) => {
+  const bodies: any[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: unknown, options: RequestInit) => {
+      bodies.push(JSON.parse(String(options.body)));
+      return Response.json({ results: [] });
+    },
+  );
+  const date = new Date("2026-11-09T14:00:00Z");
+  try {
+    await searchTavilyCoin("BTC", "fixture-only", date, "week");
+    await searchExaCoin("BTC", "fixture-only", date, "week");
+    await searchFirecrawlCoin("BTC", "fixture-only", date, "week");
+    assert.equal(bodies[0].time_range, "week");
+    assert.equal(bodies[1].startPublishedDate, "2026-11-02T14:00:00.000Z");
+    assert.equal(bodies[2].tbs, "qdr:w");
+    assert.equal(bodies[0].max_results, 5);
+  } finally {
+    t.mock.restoreAll();
+  }
 });
 test("random windows include first and last complete position and reject undersized data", () => {
   assert.equal(

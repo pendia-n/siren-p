@@ -1,12 +1,17 @@
 import type { Bindings } from "./auth";
-import { isAsset } from "./catalog";
+import { ASSETS, isAsset } from "./catalog";
 import {
   editionAt,
   searchExaCoin,
   searchTavilyCoin,
   searchFirecrawlCoin,
 } from "./news";
-export async function runNewsEdition(env: Bindings, date: Date) {
+const providers = { searchExaCoin, searchTavilyCoin, searchFirecrawlCoin };
+export async function runNewsEdition(
+  env: Bindings,
+  date: Date,
+  searches = providers,
+) {
   const edition = editionAt(date);
   if (!edition) return;
   const now = Math.floor(date.getTime() / 1000);
@@ -15,9 +20,13 @@ export async function runNewsEdition(env: Bindings, date: Date) {
   )
     .bind(now)
     .all<{ asset: string }>();
-  // No eligible paid selection means no provider call, including the backup.
-  for (const { asset } of selected.results) {
+  // Monday's 9am public sweep covers all eight coins, even with no members.
+  // The set also prevents double searches for paid selections in that edition.
+  const paidAssets = new Set(selected.results.map(({ asset }) => asset));
+  const assets = new Set(edition.weekly ? ASSETS : paidAssets);
+  for (const asset of assets) {
     if (!isAsset(asset)) continue;
+    const range = edition.weekly && !paidAssets.has(asset) ? "week" : "day";
     const claimed = await env.DB.prepare(
       "INSERT OR IGNORE INTO news_editions(edition,asset,provider,created_at) VALUES(?,?,?,?) RETURNING asset",
     )
@@ -30,10 +39,20 @@ export async function runNewsEdition(env: Bindings, date: Date) {
       try {
         result =
           edition.provider === "exa"
-            ? await searchExaCoin(asset, env[edition.key], date)
-            : await searchTavilyCoin(asset, env[edition.key], date);
+            ? await searches.searchExaCoin(asset, env[edition.key], date, range)
+            : await searches.searchTavilyCoin(
+                asset,
+                env[edition.key],
+                date,
+                range,
+              );
       } catch {
-        result = await searchFirecrawlCoin(asset, env.FIRECRAWL_HELEN, date);
+        result = await searches.searchFirecrawlCoin(
+          asset,
+          env.FIRECRAWL_HELEN,
+          date,
+          range,
+        );
       }
       if (result) {
         const previous = await env.DB.prepare(
@@ -58,7 +77,7 @@ export async function runNewsEdition(env: Bindings, date: Date) {
               result.url,
               result.publishedAt,
               published,
-              published + 3600,
+              0, // No display expiry: retain this story until a replacement is saved.
               0,
               result.highlight,
               result.provider,

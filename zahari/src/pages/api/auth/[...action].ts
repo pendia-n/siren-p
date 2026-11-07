@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { newsReturnPath } from "../../../lib/news-preview";
 import { bindings } from "../../../lib/runtime";
 import {
   clearRecovery,
@@ -148,7 +149,10 @@ export const ALL: APIRoute = async (context) => {
         throw failure;
       }
       await newSession(bindings, cookies, user);
-      return reply({ ok: true, redirect: "/studio" }, 201);
+      return reply(
+        { ok: true, redirect: newsReturnPath(body.next) ?? "/studio" },
+        201,
+      );
     }
     if (action === "login") {
       if (!(await rateLimit(bindings, `login:${username}`, 10, 900)))
@@ -166,7 +170,10 @@ export const ALL: APIRoute = async (context) => {
       )
         return error("Check your username and password.", 401);
       await newSession(bindings, cookies, user);
-      return reply({ ok: true, redirect: "/studio" });
+      return reply({
+        ok: true,
+        redirect: newsReturnPath(body.next) ?? "/studio",
+      });
     }
     if (action === "logout") {
       if (locals.sessionId)

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { newsReturnPath } from '../src/lib/news-preview.ts';
 
 // Run the actual middleware; stub only authentication and Cloudflare bindings.
 const source = readFileSync(new URL('../src/middleware.ts', import.meta.url), 'utf8').replaceAll('import.meta.env.PROD', 'true');
@@ -14,6 +15,7 @@ vm.runInNewContext(output, {
     if (name === 'astro:middleware') return { defineMiddleware: fn => fn };
     if (name === './lib/auth') return { session: async () => null };
     if (name === './lib/runtime') return { bindings: {} };
+    if (name === './lib/news-preview') return { newsReturnPath };
     throw new Error(`Unexpected import: ${name}`);
   },
 });

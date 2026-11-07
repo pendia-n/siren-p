@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Viewer from "../components/Viewer.astro";
+import NewsCards from "../components/NewsCards.astro";
 import { bindings } from "../lib/runtime";
 import { ASSETS, activeMembership, membership, slots } from "../lib/product";
 const user = Astro.locals.user!;
@@ -54,7 +55,7 @@ const maxSlots = paid && member ? slots(member.tier) : 0;
         </div>
         <div class="coin-grid">
           {ASSETS.map((asset) => (
-            <div class="settings-card">
+            <div class="settings-card" id={asset.toLowerCase()}>
               <h3>{asset}</h3>
               {selected.includes(asset) ? (
                 <>
@@ -92,9 +93,11 @@ const maxSlots = paid && member ? slots(member.tier) : 0;
         </div>
       </section>
     ) : (
-      <p class="data-note">
+      <p class="news-invitation">
         Your account includes only this SAMPLE world.{" "}
-        <a href="/pricing">Choose a membership</a> to unlock coin worlds.
+        <a href="/pricing">Choose a membership</a> to unlock coin worlds. Free
+        news excerpts are below; Five and Eight also include full news
+        summaries.
       </p>
     )}
     <div class="studio-caption">
@@ -111,4 +114,5 @@ const maxSlots = paid && member ? slots(member.tier) : 0;
       </p>
     </div>
   </section>
+  <NewsCards />
 </Layout>

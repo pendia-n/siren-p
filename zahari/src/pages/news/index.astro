@@ -1,0 +1,24 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import NewsCards from "../../components/NewsCards.astro";
+import { membership } from "../../lib/product";
+import { newsAccess } from "../../lib/news-preview";
+const member = Astro.locals.user
+  ? await membership(Astro.locals.user.id)
+  : null;
+---
+
+<Layout
+  title="Coin news"
+  description="Dated news previews for Zahari's eight coins, alongside a way into their changing 3D worlds."
+>
+  {Astro.locals.user && !newsAccess(member) && (
+    <aside class="news-invitation page-width">
+      You can browse news previews here.{" "}
+      <a href="/pricing">Five and Eight memberships</a> unlock full summaries
+      alongside your selected coin worlds; One includes the 3D experience
+      without full news.
+    </aside>
+  )}
+  <NewsCards />
+</Layout>

@@ -2,6 +2,8 @@
 import Layout from "../layouts/Layout.astro";
 import PasswordField from "../components/PasswordField.astro";
 import PasscodeField from "../components/PasscodeField.astro";
+import { newsReturnPath } from "../lib/news-preview";
+const next = newsReturnPath(Astro.url.searchParams.get("next"));
 ---
 
 <Layout title="Create account">
@@ -25,7 +27,15 @@ import PasscodeField from "../components/PasscodeField.astro";
     <div class="form-card">
       <h2>Step inside</h2>
       <p>Create your free preview account.</p>
+      {next && (
+        <p class="notice">
+          Registration returns you to your coin’s news preview. It does not
+          start a subscription or charge your card. Choose a paid plan
+          afterwards to unlock coin worlds; Five and Eight include full news.
+        </p>
+      )}
       <form method="post" data-auth-action="register">
+        {next && <input type="hidden" name="next" value={next} />}
         <div class="field">
           <label for="username">Username</label>
           <input
@@ -61,7 +71,10 @@ import PasscodeField from "../components/PasscodeField.astro";
         </button>
       </form>
       <p class="form-foot">
-        Already have an account? <a href="/signin">Sign in</a>
+        Already have an account?{" "}
+        <a href={next ? `/signin?next=${encodeURIComponent(next)}` : "/signin"}>
+          Sign in
+        </a>
       </p>
     </div>
   </section>

@@ -2,6 +2,7 @@
 import Layout from "../layouts/Layout.astro";
 import Viewer from "../components/Viewer.astro";
 import Icon from "../components/Icon.astro";
+import NewsCards from "../components/NewsCards.astro";
 ---
 
 <Layout>
@@ -42,11 +43,12 @@ import Icon from "../components/Icon.astro";
     <h2>A world, not a watchlist.</h2>
     <p>
       Turn the sample. Follow the light. Save a view worth keeping. This first
-      preview is about exploring the art; live market data and news are not
-      connected yet.
+      preview is about exploring the art. Member coin worlds draw on market
+      history; browse dated news previews below for another part of the story.
     </p>
     <a href="/about" class="text-link">
       Meet Zahari ↗
     </a>
   </section>
+  <NewsCards />
 </Layout>

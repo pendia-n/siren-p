@@ -13,7 +13,6 @@ function startViewer(root: HTMLElement) {
   const retry = root.querySelector<HTMLButtonElement>("[data-retry]")!;
   const sample = root.dataset.sample === "true";
   const banner = root.querySelector<HTMLElement>("[data-news-banner]");
-  let bannerExpiry: number | undefined;
   const refreshNews = async () => {
     if (!banner?.dataset.newsAsset || document.hidden) return;
     try {
@@ -31,11 +30,10 @@ function startViewer(root: HTMLElement) {
           summary: string;
           url: string;
           highlight?: string;
-          expiresAt: number;
+          publishedAt: string;
         } | null;
       };
-      window.clearTimeout(bannerExpiry);
-      if (!news || news.expiresAt * 1000 <= Date.now()) {
+      if (!news) {
         banner.hidden = true;
         return;
       }
@@ -66,15 +64,12 @@ function startViewer(root: HTMLElement) {
       } else summary.textContent = news.summary;
       banner.querySelector<HTMLAnchorElement>("[data-banner-link]")!.href =
         url.href;
+      const date = banner.querySelector<HTMLElement>("[data-banner-date]");
+      if (date)
+        date.textContent = `Published ${new Date(news.publishedAt).toLocaleDateString()}`;
       banner.hidden = false;
-      bannerExpiry = window.setTimeout(
-        () => {
-          banner.hidden = true;
-        },
-        news.expiresAt * 1000 - Date.now(),
-      );
     } catch {
-      if (banner) banner.hidden = true;
+      // A temporary connection error must not erase the last displayed story.
     }
   };
   if (banner?.dataset.newsAsset) {
@@ -84,7 +79,6 @@ function startViewer(root: HTMLElement) {
       "pagehide",
       () => {
         clearInterval(newsTimer);
-        clearTimeout(bannerExpiry);
       },
       { once: true },
     );

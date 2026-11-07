@@ -1,0 +1,85 @@
+---
+import { bindings } from "../lib/runtime";
+import { ASSETS } from "../lib/catalog";
+import {
+  NEWS_COLUMNS,
+  newsPath,
+  newsPreview,
+  type CachedNews,
+} from "../lib/news-preview";
+const rows = (
+  await bindings.DB.prepare(
+    `SELECT ${NEWS_COLUMNS} FROM news_cache`,
+  ).all<CachedNews>()
+).results;
+---
+
+<section class="news-section page-width" aria-labelledby="news-heading">
+  <p class="eyebrow">EIGHT COINS / STORIES IN CONTEXT</p>
+  <h2 id="news-heading">A little less scrolling.</h2>
+  <p class="data-note">
+    Browse the headlines, then step into a changing coin world. Stories keep
+    their dates and stay here until a new edition replaces them.
+  </p>
+  {!Astro.locals.user && (
+    <aside class="news-invitation">
+      You’re reading a free preview. Sign in and choose a membership for
+      market-data-driven 3D worlds. Five ($8.99/month) and Eight ($12.99/month)
+      also include full news summaries for your selected coins.
+    </aside>
+  )}
+  <div class="coin-grid">
+    {ASSETS.map((asset) => {
+      const row = rows.find(
+        (item) =>
+          item.asset === asset && item.title && item.summary && item.source_url,
+      );
+      const preview = row ? newsPreview(row) : null;
+      return (
+        <article class="settings-card news-card">
+          <p class="eyebrow">{asset}</p>
+          <h3>
+            <a href={newsPath(asset)}>
+              {preview?.title ?? `${asset}: the next chapter`}
+            </a>
+          </h3>
+          <p>
+            {preview?.summary ??
+              "No published story yet. This coin is included in our weekly news sweep; no story is invented to fill this space."}
+          </p>
+          {preview && (
+            <>
+              <p class="data-note">
+                Published{" "}
+                <time datetime={preview.publishedAt}>
+                  {new Date(preview.publishedAt).toLocaleDateString("en-US", {
+                    timeZone: "America/New_York",
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </time>
+              </p>
+              <a
+                class="text-link"
+                href={preview.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Read the source ↗
+              </a>
+            </>
+          )}
+          <a class="button secondary" href={newsPath(asset)}>
+            Explore {asset} news &amp; world
+          </a>
+        </article>
+      );
+    })}
+  </div>
+  <p class="data-note">
+    Public coverage is refreshed weekly on Monday at 9am New York time. Coins
+    selected by active Five and Eight members are also checked daily at 9am, 1pm
+    and 9pm. No new qualifying story? The previous dated story stays.
+  </p>
+</section>

@@ -1,6 +1,7 @@
 import { defineMiddleware } from "astro:middleware";
 import { session } from "./lib/auth";
 import { bindings } from "./lib/runtime";
+import { newsReturnPath } from "./lib/news-preview";
 
 const guestOnly = new Set(["/", "/signin", "/signup", "/recovery"]);
 const privatePages = new Set(["/studio", "/profile", "/security"]);
@@ -25,7 +26,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (privatePages.has(path) && !context.locals.user)
     return context.redirect("/signin", 303);
   if (guestOnly.has(path) && context.locals.user)
-    return context.redirect("/studio", 303);
+    return context.redirect(
+      path === "/signin" || path === "/signup"
+        ? (newsReturnPath(context.url.searchParams.get("next")) ?? "/studio")
+        : "/studio",
+      303,
+    );
   const upstream = await next();
   // Redirect responses have immutable headers. Preserve their status/location
   // in a writable response before applying the shared security headers.
