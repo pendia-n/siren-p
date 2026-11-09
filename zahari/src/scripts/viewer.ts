@@ -12,16 +12,21 @@ function startViewer(root: HTMLElement) {
   const progress = root.querySelector<HTMLElement>("[data-progress]")!;
   const retry = root.querySelector<HTMLButtonElement>("[data-retry]")!;
   const sample = root.dataset.sample === "true";
+  const demo = root.dataset.demo === "true";
   const banner = root.querySelector<HTMLElement>("[data-news-banner]");
   const refreshNews = async () => {
-    if (!banner?.dataset.newsAsset || document.hidden) return;
+    if (!banner || (!demo && !banner.dataset.newsAsset) || document.hidden)
+      return;
     try {
-      const response = await fetch(`/api/news/${banner.dataset.newsAsset}`, {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
+      const response = await fetch(
+        demo ? "/api/demo/news" : `/api/news/${banner.dataset.newsAsset}`,
+        {
+          credentials: "same-origin",
+          cache: "no-store",
+        },
+      );
       if (!response.ok) {
-        banner.hidden = true;
+        if (!demo) banner.hidden = true;
         return;
       }
       const { news } = (await response.json()) as {
@@ -72,7 +77,7 @@ function startViewer(root: HTMLElement) {
       // A temporary connection error must not erase the last displayed story.
     }
   };
-  if (banner?.dataset.newsAsset) {
+  if (banner && (demo || banner.dataset.newsAsset)) {
     void refreshNews();
     const newsTimer = window.setInterval(refreshNews, 60000);
     window.addEventListener(
@@ -203,16 +208,25 @@ function startViewer(root: HTMLElement) {
   };
   frame = requestAnimationFrame(animate);
   const loader = new GLTFLoader();
-  async function load() {
+  type DemoScene = {
+    modelUrl: string;
+    location: Place;
+    buried: boolean;
+    sourceTimestamp: string;
+    computedAt: number;
+    stale: boolean;
+  };
+  async function load(next?: DemoScene) {
+    const keepVisible = Boolean(next && loaded);
     retry.hidden = true;
-    loading.hidden = false;
+    loading.hidden = keepVisible;
     loading.classList.remove("error");
     progress.textContent = "Opening the artwork…";
     try {
       const gltf = await loader.loadAsync(
         sample
           ? "/media/SAMPLE.glb"
-          : root.dataset.modelUrl || "/media/SAMPLE.glb",
+          : next?.modelUrl || root.dataset.modelUrl || "/media/SAMPLE.glb",
         (event) => {
           if (event.total)
             progress.textContent = `Opening the artwork… ${Math.round((event.loaded / event.total) * 100)}%`;
@@ -222,16 +236,27 @@ function startViewer(root: HTMLElement) {
         disposeObject(gltf.scene);
         return;
       }
+      const box = new THREE.Box3().setFromObject(gltf.scene);
+      const size = box.getSize(new THREE.Vector3());
+      const extent = Math.max(size.x, size.y, size.z);
+      if (!Number.isFinite(extent) || extent <= 0) {
+        disposeObject(gltf.scene);
+        throw new Error("Artwork has no renderable dimensions");
+      }
+      const scale = 3 / extent;
+      gltf.scene.position.sub(box.getCenter(new THREE.Vector3()));
       for (const child of [...anchor.children]) {
         anchor.remove(child);
         disposeObject(child);
       }
-      const box = new THREE.Box3().setFromObject(gltf.scene);
-      const size = box.getSize(new THREE.Vector3());
-      const scale = 3 / Math.max(size.x, size.y, size.z);
-      gltf.scene.position.sub(box.getCenter(new THREE.Vector3()));
       anchor.add(gltf.scene);
       anchor.scale.setScalar(scale);
+      if (next) {
+        root.dataset.modelUrl = next.modelUrl;
+        root.dataset.buried = String(next.buried);
+        landscape.setLocation(next.location);
+        world.setPlace(next.location);
+      }
       anchor.position.y = root.dataset.buried === "true" ? -0.35 : 0;
       gltf.scene.traverse((child) => {
         if (child instanceof THREE.Mesh) child.castShadow = true;
@@ -242,15 +267,95 @@ function startViewer(root: HTMLElement) {
       loading.hidden = true;
       root.dataset.loaded = "true";
       renderer.render(scene, camera);
+      return true;
     } catch {
       loading.classList.add("error");
       progress.textContent =
         "The artwork did not load. Check your connection, then try again.";
-      retry.hidden = false;
+      retry.hidden = keepVisible;
+      return false;
     }
   }
-  retry.addEventListener("click", load);
-  void load();
+  if (demo) {
+    const log = root.parentElement?.querySelector("[data-demo-log]");
+    const setLog = (key: string, value: string) => {
+      const element = log?.querySelector(`[data-demo-${key}]`);
+      if (element && element.textContent !== value) element.textContent = value;
+    };
+    let refreshing = false;
+    const refreshDemo = async () => {
+      if (!alive || document.hidden || refreshing) return;
+      refreshing = true;
+      try {
+        const response = await fetch("/api/demo/scene", { cache: "no-store" });
+        if (!response.ok) throw new Error("Scene unavailable");
+        const { scene: next } = (await response.json()) as {
+          scene: DemoScene | null;
+        };
+        if (!alive) return;
+        if (!next) {
+          if (!loaded) {
+            loading.classList.remove("error");
+            retry.hidden = true;
+            progress.textContent = "Waiting for the first hourly SOL scene…";
+            setLog("range", "Waiting for the first hourly scene.");
+            setLog("time", "");
+            setLog("status", "");
+          }
+          return;
+        }
+        if (
+          (!loaded || root.dataset.modelUrl !== next.modelUrl) &&
+          !(await load(next))
+        ) {
+          if (alive)
+            setLog(
+              "status",
+              loaded
+                ? "Showing the previous scene; the new aircraft did not load."
+                : "The current aircraft did not load.",
+            );
+          return;
+        }
+        if (!alive) return;
+        setLog("range", `Observations: ${next.sourceTimestamp}`);
+        setLog(
+          "time",
+          `Calculated: ${new Date(next.computedAt * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`,
+        );
+        setLog(
+          "status",
+          next.stale
+            ? "Showing the last available scene; the hourly refresh has not completed."
+            : "",
+        );
+      } catch {
+        if (alive) {
+          setLog(
+            "status",
+            loaded
+              ? "Showing the last available scene; could not check for updates."
+              : "Could not load the SOL scene. Try again.",
+          );
+          if (!loaded) {
+            progress.textContent = "Could not load the SOL scene.";
+            retry.hidden = false;
+          }
+        }
+      } finally {
+        refreshing = false;
+      }
+    };
+    retry.addEventListener("click", refreshDemo);
+    void refreshDemo();
+    const timer = window.setInterval(refreshDemo, 60_000);
+    window.addEventListener("pagehide", () => window.clearInterval(timer), {
+      once: true,
+    });
+  } else {
+    retry.addEventListener("click", () => void load());
+    void load();
+  }
   if (root.dataset.sceneAsset) {
     const refresh = async () => {
       if (!alive || document.hidden) return;

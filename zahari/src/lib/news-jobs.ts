@@ -26,7 +26,9 @@ export async function runNewsEdition(
   const assets = new Set(edition.weekly ? ASSETS : paidAssets);
   for (const asset of assets) {
     if (!isAsset(asset)) continue;
-    const range = edition.weekly && !paidAssets.has(asset) ? "week" : "day";
+    const weeklySol = edition.weekly && asset === "SOL";
+    const range =
+      edition.weekly && (weeklySol || !paidAssets.has(asset)) ? "week" : "day";
     const claimed = await env.DB.prepare(
       "INSERT OR IGNORE INTO news_editions(edition,asset,provider,created_at) VALUES(?,?,?,?) RETURNING asset",
     )
@@ -55,6 +57,25 @@ export async function runNewsEdition(
         );
       }
       if (result) {
+        if (weeklySol) {
+          await env.DB.prepare(
+            `INSERT INTO sol_demo_weekly_news(asset,edition,title,summary,source_url,published_at,fetched_at)
+            VALUES('SOL',?,?,?,?,?,?) ON CONFLICT(asset) DO UPDATE SET
+              edition=excluded.edition,title=excluded.title,summary=excluded.summary,
+              source_url=excluded.source_url,published_at=excluded.published_at,fetched_at=excluded.fetched_at
+            WHERE excluded.edition>sol_demo_weekly_news.edition
+              AND (excluded.source_url<>sol_demo_weekly_news.source_url OR excluded.title<>sol_demo_weekly_news.title)`,
+          )
+            .bind(
+              edition.id,
+              result.title,
+              result.summary,
+              result.url,
+              result.publishedAt,
+              Math.floor(Date.now() / 1000),
+            )
+            .run();
+        }
         const previous = await env.DB.prepare(
           "SELECT source_url,title FROM news_cache WHERE asset=?",
         )

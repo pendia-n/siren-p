@@ -5,6 +5,34 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import { newsReturnPath } from '../src/lib/news-preview.ts';
 
+test('anonymous demo model route serves only the published SOL model version', async () => {
+  const route = {};
+  const calls = [];
+  let record = { model_name: 'SOL_FIXTURE_05.glb', computed_at: 100 };
+  const bindings = {
+    DB: { prepare: () => ({ first: async () => record }) },
+    MODELS: { get: async key => { calls.push(key); return { body: 'fixture' }; } },
+  };
+  const source = readFileSync(new URL('../src/pages/api/demo/model.ts', import.meta.url), 'utf8');
+  vm.runInNewContext(ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText, {
+    exports: route, Response,
+    require(name) {
+      assert.equal(name, '../../../lib/runtime');
+      return { bindings };
+    },
+  });
+  const get = (query) => route.GET({ url: new URL('https://example.org/api/demo/model' + query), locals: {} });
+  assert.equal((await get('')).status, 404);
+  assert.equal((await get('?v=99')).status, 404);
+  const response = await get('?v=100&asset=BTC&model=BTC_01.glb');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'model/gltf-binary');
+  assert.deepEqual(calls, ['sol/SOL_FIXTURE_05.glb']);
+  record = { model_name: '../BTC_01.glb', computed_at: 100 };
+  assert.equal((await get('?v=100')).status, 404);
+  assert.equal(calls.length, 1);
+});
+
 // Run the actual middleware; stub only authentication and Cloudflare bindings.
 const source = readFileSync(new URL('../src/middleware.ts', import.meta.url), 'utf8').replaceAll('import.meta.env.PROD', 'true');
 const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;

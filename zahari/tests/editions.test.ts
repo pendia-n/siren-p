@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { WINDOW_CALIBRATION_SQL } from "../src/lib/scene-window";
 import {
@@ -31,6 +32,12 @@ import {
   searchFirecrawlCoin,
 } from "../src/lib/news";
 import type { Bindings } from "../src/lib/auth";
+import { computeScene } from "../src/lib/scene-compute";
+import { demoScene, demoNews, refreshDemoScene } from "../src/lib/sol-demo";
+const demoMigration = readFileSync(
+  new URL("../migrations/0010_sol_demo.sql", import.meta.url),
+  "utf8",
+);
 test("exact inclusive model boundaries, all authored counts", () => {
   const cases: Record<number, number[]> = {
     3: [-1, -1 / 3, 1 / 3],
@@ -57,7 +64,7 @@ test("exact inclusive model boundaries, all authored counts", () => {
   assert.deepEqual(PLAN_WINDOWS, { one: 1100, five: 2200, eight: 3300 });
 });
 
-function newsFixture() {
+function newsFixture(migrate = true) {
   const db = new DatabaseSync(":memory:");
   db.exec(`
     CREATE TABLE memberships(user_id TEXT,tier TEXT,status TEXT,current_period_end INTEGER);
@@ -65,6 +72,7 @@ function newsFixture() {
     CREATE TABLE news_editions(edition TEXT,asset TEXT,provider TEXT,created_at INTEGER,state TEXT DEFAULT 'running',PRIMARY KEY(edition,asset));
     CREATE TABLE news_cache(asset TEXT PRIMARY KEY,title TEXT,summary TEXT,source_url TEXT,published_at TEXT,fetched_at INTEGER,visible_until INTEGER,next_search_at INTEGER,highlight TEXT,provider TEXT);
   `);
+  if (migrate) db.exec(demoMigration);
   const env = {
     DB: {
       prepare(sql: string) {
@@ -224,6 +232,10 @@ test("paid searches deduplicate selected coins, skip inactive/expired/One, prese
     await runNewsEdition(f.env, new Date("2026-11-16T14:00:00Z"), f.searches);
     assert.equal(f.calls.length, 8);
     assert.equal(f.calls.find((c) => c.asset === "BTC")?.range, "day");
+    assert.deepEqual(
+      f.calls.filter((c) => c.asset === "SOL").map((c) => c.range),
+      ["week"],
+    );
     assert.equal(f.calls.find((c) => c.asset === "UNI")?.range, "week");
   } finally {
     f.db.close();
@@ -400,6 +412,128 @@ test("SQL windows use chronological positions across serial gaps and calibrate o
     db.close();
   }
 });
+test("SOL demo shares the production calculator, claims one hourly run and retains a failed refresh", async () => {
+  const { db, env } = newsFixture();
+  try {
+    db.exec(
+      "CREATE TABLE localtod_st_15m(id INTEGER PRIMARY KEY,shortid INTEGER,asset TEXT,timestamp TEXT,deviation REAL,sigma REAL)",
+    );
+    const insert = db.prepare(
+      "INSERT INTO localtod_st_15m VALUES(?,?,?,?,?,?)",
+    );
+    for (let i = 0; i < 801; i++)
+      insert.run(i * 2, i * 10, "SOL", String(i).padStart(4, "0"), i, -i);
+    insert.run(2000, 1, "BTC", "0000", 1e9, 1e9);
+    const dbAdapter = Object.assign(env.DB, {
+      batch: async (statements: D1PreparedStatement[]) =>
+        Promise.all(statements.map((statement) => statement.all())),
+    });
+    let lists = 0;
+    const fixture = {
+      DB: dbAdapter,
+      MODELS: {
+        list: async () => {
+          lists++;
+          return {
+            objects: Array.from({ length: 6 }, (_, i) => ({
+              key: `sol/SOL_${String(i + 1).padStart(2, "0")}.glb`,
+            })),
+          };
+        },
+      } as unknown as R2Bucket,
+    };
+    const first = await computeScene(fixture, "SOL", 800, () => 0);
+    const last = await computeScene(fixture, "SOL", 800, () => 0.9999);
+    assert.deepEqual(first, {
+      model: "SOL_06.glb",
+      placement: { location: "sky", buried: false },
+      sourceRange: "0000 through 0799",
+    });
+    assert.deepEqual(last, { ...first, sourceRange: "0001 through 0800" });
+    assert.equal(await demoScene(dbAdapter), null);
+    const hour = Date.parse("2026-11-09T14:00:00Z");
+    await Promise.all([
+      refreshDemoScene(fixture, hour),
+      refreshDemoScene(fixture, hour),
+    ]);
+    assert.equal(lists, 3);
+    const scene = await demoScene(dbAdapter, hour);
+    assert.equal(scene?.location, "sky");
+    assert.equal(scene?.computedAt, hour / 1000);
+    assert.equal(scene?.stale, false);
+    assert.deepEqual(await demoScene(dbAdapter, hour + 120000), scene);
+    db.exec("DELETE FROM localtod_st_15m WHERE asset='SOL'");
+    await refreshDemoScene(fixture, hour + 3600000);
+    assert.deepEqual(await demoScene(dbAdapter, hour + 3600000), {
+      ...scene,
+      stale: true,
+    });
+    assert.equal(lists, 3);
+  } finally {
+    db.close();
+  }
+});
+
+test("SOL weekly banner is independent of daily news and never expires", async () => {
+  const f = newsFixture();
+  try {
+    f.member("a", "five", ["SOL"]);
+    await runNewsEdition(f.env, new Date("2026-11-09T14:00:00Z"), f.searches);
+    const original = await demoNews(f.env.DB);
+    assert.equal(original?.publishedAt, "2026-11-09T14:00:00.000Z");
+    assert.equal(original?.preview, true);
+    await runNewsEdition(f.env, new Date("2026-11-09T18:00:00Z"), {
+      ...f.searches,
+      searchExaCoin: async () => ({
+        title: "SOL daily story",
+        summary: "Solana daily story",
+        url: "https://example.org/daily",
+        publishedAt: "2026-11-09T18:00:00Z",
+        provider: "exa",
+        highlight: "",
+      }),
+    });
+    assert.equal(
+      f.db.prepare("SELECT title FROM news_cache WHERE asset='SOL'").get()
+        ?.title,
+      "SOL daily story",
+    );
+    await runNewsEdition(f.env, new Date("2026-11-16T14:00:00Z"), f.searches);
+    f.mode("failure");
+    await runNewsEdition(f.env, new Date("2026-11-23T14:00:00Z"), f.searches);
+    f.mode("empty");
+    await runNewsEdition(f.env, new Date("2026-11-30T14:00:00Z"), f.searches);
+    assert.deepEqual(await demoNews(f.env.DB), original);
+  } finally {
+    f.db.close();
+  }
+});
+
+test("SOL demo migration seeds only a proven Monday edition", () => {
+  for (const slot of ["9", "13"]) {
+    const { db } = newsFixture(false);
+    try {
+      db.prepare("INSERT INTO news_editions VALUES(?,?,?,?,?)").run(
+        `2026-11-09/${slot}`,
+        "SOL",
+        "tavily",
+        100,
+        "published",
+      );
+      db.exec(
+        "INSERT INTO news_cache VALUES('SOL','Solana title','Solana summary','https://example.org/sol','2026-11-09',101,0,0,'','tavily')",
+      );
+      db.exec(demoMigration);
+      assert.equal(
+        Boolean(db.prepare("SELECT title FROM sol_demo_weekly_news").get()),
+        slot === "9",
+      );
+    } finally {
+      db.close();
+    }
+  }
+});
+
 test("location boundaries implement all three classes", () => {
   const expected = {
     palace: ["lowland:false", "lowland:true", "pacific:false", "sky:false"],

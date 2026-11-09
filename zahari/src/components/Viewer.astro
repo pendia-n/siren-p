@@ -8,6 +8,7 @@ interface Props {
   buried?: boolean;
   sceneAsset?: string;
   news?: boolean;
+  demo?: boolean;
 }
 const {
   sample = false,
@@ -17,6 +18,7 @@ const {
   buried = false,
   sceneAsset,
   news = false,
+  demo = false,
 } = Astro.props;
 ---
 
@@ -28,6 +30,7 @@ const {
   data-location-initial={location}
   data-buried={String(buried)}
   data-scene-asset={sceneAsset ?? ""}
+  data-demo={String(demo)}
   aria-label={
     sample ? "Interactive sample artwork" : `Interactive ${asset} world`
   }
@@ -57,7 +60,11 @@ const {
       aria-live="polite"
     >
       <span class="banner-eyebrow">
-        {sample ? "WELCOME TO ZAHARI" : `${asset} / IN THE WORLD`}
+        {sample
+          ? "WELCOME TO ZAHARI"
+          : demo
+            ? "SOL / WEEKLY BRIEFING"
+            : `${asset} / IN THE WORLD`}
       </span>
       <h2 data-banner-title>
         {sample ? "A little world. A changing story." : ""}

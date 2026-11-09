@@ -1,5 +1,6 @@
 import { handle } from "@astrojs/cloudflare/handler";
 import { runNewsEdition } from "./lib/news-jobs";
+import { refreshDemoScene } from "./lib/sol-demo";
 import type { Bindings } from "./lib/auth";
 export default {
   fetch: handle,
@@ -9,5 +10,6 @@ export default {
     ctx: ExecutionContext,
   ) {
     ctx.waitUntil(runNewsEdition(env, new Date(controller.scheduledTime)));
+    ctx.waitUntil(refreshDemoScene(env, controller.scheduledTime));
   },
 };

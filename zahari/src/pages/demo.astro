@@ -1,0 +1,74 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Viewer from "../components/Viewer.astro";
+import { bindings } from "../lib/runtime";
+import { demoScene } from "../lib/sol-demo";
+const scene = await demoScene(bindings.DB);
+---
+
+<Layout
+  title="SOL Demo"
+  description="Explore the SOL water bomber in a landscape shaped by historical Solana market data."
+>
+  <section class="studio page-width">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">SOL / PUBLIC FLIGHT DECK</p>
+        <h1>
+          SOL Demo<span class="heading-dot">.</span>
+        </h1>
+        <p>
+          One water bomber, six forms. Solana market history selects the
+          aircraft and its surroundings.
+        </p>
+      </div>
+      <a class="button secondary" href="/pricing">
+        View membership plans
+      </a>
+    </div>
+    <Viewer
+      demo
+      asset="SOL"
+      modelUrl={scene?.modelUrl}
+      location={scene?.location}
+      buried={scene?.buried}
+      news
+    />
+    <div class="flight-log" aria-live="polite" data-demo-log>
+      <p class="eyebrow">FLIGHT LOG / HISTORICAL DATA</p>
+      <p data-demo-range>
+        {scene
+          ? `Observations: ${scene.sourceTimestamp}`
+          : "Waiting for the first hourly scene."}
+      </p>
+      <p data-demo-time>
+        {scene
+          ? `Calculated: ${new Date(scene.computedAt * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`
+          : ""}
+      </p>
+      <p data-demo-status>
+        {scene?.stale
+          ? "Showing the last available scene; the hourly refresh has not completed."
+          : ""}
+      </p>
+      <p class="data-note">
+        The shared scene is recalculated hourly from 800 historical
+        observations. It is not a live price feed.
+      </p>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .flight-log {
+    margin-block: 1.5rem 3rem;
+    border-inline-start: 3px solid var(--accent);
+    padding-inline-start: 1rem;
+  }
+  .flight-log p {
+    margin-block: 0.45rem;
+  }
+  [data-demo-time] {
+    font-variant-numeric: tabular-nums;
+  }
+</style>
