@@ -212,7 +212,6 @@ function startViewer(root: HTMLElement) {
     modelUrl: string;
     location: Place;
     buried: boolean;
-    sourceTimestamp: string;
     computedAt: number;
     stale: boolean;
   };
@@ -298,9 +297,8 @@ function startViewer(root: HTMLElement) {
             loading.classList.remove("error");
             retry.hidden = true;
             progress.textContent = "Waiting for the first hourly SOL scene…";
-            setLog("range", "Waiting for the first hourly scene.");
             setLog("time", "");
-            setLog("status", "");
+            setLog("status", "Waiting for the first hourly scene.");
           }
           return;
         }
@@ -318,7 +316,6 @@ function startViewer(root: HTMLElement) {
           return;
         }
         if (!alive) return;
-        setLog("range", `Observations: ${next.sourceTimestamp}`);
         setLog(
           "time",
           `Calculated: ${new Date(next.computedAt * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`,

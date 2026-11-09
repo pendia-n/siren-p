@@ -459,6 +459,8 @@ test("SOL demo shares the production calculator, claims one hourly run and retai
     assert.equal(lists, 3);
     const scene = await demoScene(dbAdapter, hour);
     assert.equal(scene?.location, "sky");
+    assert.ok(scene && !("sourceTimestamp" in scene));
+    assert.doesNotMatch(JSON.stringify(scene), /through/);
     assert.equal(scene?.computedAt, hour / 1000);
     assert.equal(scene?.stale, false);
     assert.deepEqual(await demoScene(dbAdapter, hour + 120000), scene);

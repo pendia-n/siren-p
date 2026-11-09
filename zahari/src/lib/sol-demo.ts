@@ -4,17 +4,17 @@ import type { SceneLocation } from "./scene-rules";
 import { NEWS_COLUMNS, newsPreview, type CachedNews } from "./news-preview";
 
 type SceneRow = {
-  attempted_hour: number;
   computed_at: number | null;
   model_name: string | null;
   location: SceneLocation | null;
   buried: number;
-  source_timestamp: string;
 };
 
 export async function demoScene(db: D1Database, now = Date.now()) {
   const row = await db
-    .prepare("SELECT * FROM sol_demo_scene WHERE singleton=1")
+    .prepare(
+      "SELECT computed_at,model_name,location,buried FROM sol_demo_scene WHERE singleton=1",
+    )
     .first<SceneRow>();
   if (!row?.model_name || !row.location || row.computed_at === null)
     return null;
@@ -22,7 +22,6 @@ export async function demoScene(db: D1Database, now = Date.now()) {
     modelUrl: `/api/demo/model?v=${row.computed_at}`,
     location: row.location,
     buried: Boolean(row.buried),
-    sourceTimestamp: row.source_timestamp,
     computedAt: row.computed_at,
     stale: row.computed_at < Math.floor(now / 3600000) * 3600,
   };

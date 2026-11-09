@@ -36,20 +36,17 @@ const scene = await demoScene(bindings.DB);
     />
     <div class="flight-log" aria-live="polite" data-demo-log>
       <p class="eyebrow">FLIGHT LOG / HISTORICAL DATA</p>
-      <p data-demo-range>
-        {scene
-          ? `Observations: ${scene.sourceTimestamp}`
-          : "Waiting for the first hourly scene."}
-      </p>
       <p data-demo-time>
         {scene
           ? `Calculated: ${new Date(scene.computedAt * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`
           : ""}
       </p>
       <p data-demo-status>
-        {scene?.stale
-          ? "Showing the last available scene; the hourly refresh has not completed."
-          : ""}
+        {!scene
+          ? "Waiting for the first hourly scene."
+          : scene.stale
+            ? "Showing the last available scene; the hourly refresh has not completed."
+            : ""}
       </p>
       <p class="data-note">
         The shared scene is recalculated hourly from 800 historical
